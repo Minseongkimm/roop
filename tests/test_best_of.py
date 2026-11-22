@@ -10,6 +10,7 @@ from roop.engines.budget import (
     BEST_OF_N,
     BEST_OF_TEMPERATURES,
     MAX_GENERATIONS_PER_TASK,
+    MAX_SECONDS_PER_GENERATION,
     MAX_SECONDS_PER_TASK,
 )
 from roop.engines.harness import run_best_of
@@ -87,6 +88,7 @@ def test_best_of_cap_does_not_multiply_local_retries() -> None:
     assert MAX_GENERATIONS_PER_TASK < BEST_OF_N * DEFAULT_MAX_RETRIES
     assert BEST_OF_TEMPERATURES == (0.0, 0.2, 0.4, 0.6, 0.8)
     assert MAX_SECONDS_PER_TASK == 600.0
+    assert MAX_SECONDS_PER_GENERATION == 240.0
 
 
 def test_best_of_stops_at_first_pass_and_records_both_rates(tmp_path: Path) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from roop.adapters.model import ModelAdapter
 from roop.adapters.ollama import DEFAULT_MODEL, DEFAULT_NUM_CTX, OllamaClient
+from roop.engines.budget import MAX_SECONDS_PER_GENERATION
 from roop.context.roles import AgentRole
 from roop.engines.base import EngineGeneration, EngineRequest
 from roop.executor.agent import AgentExecutor, ExecutionResult
@@ -17,7 +18,7 @@ class RoopEngine:
 
     def __init__(self, model: ModelAdapter | None = None) -> None:
         self._model: ModelAdapter = model or OllamaClient(
-            timeout_seconds=300.0,
+            timeout_seconds=MAX_SECONDS_PER_GENERATION,
             default_model=DEFAULT_MODEL,
             num_ctx=DEFAULT_NUM_CTX,
         )

@@ -517,6 +517,45 @@ def eval_run_command(
         raise typer.Exit(code=2)
 
 
+@eval_app.command("compare")
+def eval_compare_command(
+    project: Path = typer.Option(
+        ...,
+        "--project",
+        exists=False,
+        file_okay=False,
+        dir_okay=True,
+        help="Workspace for per-task scratch directories and the scorecard",
+    ),
+    engine: str = typer.Option(..., "--engine", help="roop or aider"),
+    split: str = typer.Option("heldout", "--split", help="practice or heldout"),
+    difficulty: Optional[str] = typer.Option(
+        None,
+        "--difficulty",
+        help="Optional easy or medium filter",
+    ),
+    suite: Optional[Path] = typer.Option(None, "--suite", help="Eval manifest path"),
+) -> None:
+    """Run Best-of-5 for one engine. The harness grades every sample."""
+    from roop.eval.best_score import render_best_of_scorecard, aggregate_best_of
+    from roop.eval.compare import build_engine, load_compare_suite, run_compare
+
+    try:
+        selected = build_engine(engine)
+    except ValueError as err:
+        typer.echo(str(err), err=True)
+        raise typer.Exit(code=1) from err
+    results = run_compare(
+        engine=selected,
+        suite=load_compare_suite(suite),
+        workspace=project,
+        split=split,
+        difficulty=difficulty,
+    )
+    typer.echo(render_best_of_scorecard(aggregate_best_of(results)))
+    typer.echo(f"tasks={len(results)} workspace={project}")
+
+
 @tasks_app.command("list")
 def tasks_list_command(
     db: Path = typer.Option(DEFAULT_DB, "--db", help="SQLite task database path"),
