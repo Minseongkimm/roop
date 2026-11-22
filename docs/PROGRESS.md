@@ -15,7 +15,7 @@ Cursor는 엔진 수정용, 반복 실험은 로컬 Roop.
 | 0 | 파이프라인 1바퀴 GREEN (실파일+unittest) | **완료** — playground `math_utils` Task #1 done |
 | 1 | 관측성: JSONL / night report / hard-stop `wip/` | **완료** — `87e88b3` 푸시 |
 | 2a | eval suite 20개 정의 (easy10+medium10) | **완료** — `evals/v1/manifest.json` |
-| 2b | easy 성공률 안정 측정 | **진행중** — clean scratch 5개 기준 **60%** (3/5) |
+| 2b | easy 성공률 안정 측정 | **진행중** — `\n` 이스케이프 정규화 후 slugify GREEN; easy5는 이전이 60% |
 | 2c | medium 성공률 측정 | **일부만** — merge/lru GREEN, 나머지 미완/중단 |
 | 3 | 모델 크기 표 (7B / 에어최대 / 27B API) | **미착수** |
 | 4 | Escape Hatch (막힐 때만 API) | **미착수** |
@@ -35,8 +35,8 @@ Cursor는 엔진 수정용, 반복 실험은 로컬 Roop.
 ## playground / scratch 실측 요약
 - validation Task #1: **done** (mean/median)
 - **2026-11-22 clean scratch easy5:** clamp/stack/safe-div **GREEN**, slugify/parse-kv **blocked** → **60%**
-- 워크스페이스: `~/Desktop/roop-eval-scratch`
-- 실패 패턴: slugify/kv는 동일 SAW 반복 block (모델 품질/프롬프트 쪽)
+- **같은 날 수정:** 파일 content의 literal `\\n` 정규화 → slugify **GREEN** 재확인 (`roop-eval-scratch2`)
+- parse-kv는 아직 blocked (별도 원인 가능)
 
 ## 운영 규칙 (토큰)
 - Cursor: 하루 1목표 / 새 채팅 / `.cursorignore` 유지
@@ -49,5 +49,5 @@ Cursor는 엔진 수정용, 반복 실험은 로컬 Roop.
 - 최신 푸시: `fd16a7d` — Stage1/2 관측성·eval·패치 정규화 (2026-11-22)
 
 ## 다음 Cursor 세션 (1줄만)
-**목표:** slugify/parse-kv blocked 원인 1개만 고친다 (또는 easy 나머지 5개 재측정).  
+**목표:** parse-kv blocked 원인 확인·수정 1건, 또는 easy 나머지 재측정.  
 **하지 말 것:** 밤새 night, medium 일괄, API/맥미니.

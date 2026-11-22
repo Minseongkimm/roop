@@ -315,7 +315,8 @@ class AgentExecutor:
                     continue
                 if transaction is not None:
                     transaction.capture(path)
-                patches.append(tools.write_file(path, str(item.get("content") or "")))
+                body: str = normalize_model_text(str(item.get("content") or ""))
+                patches.append(tools.write_file(path, body))
                 continue
 
             find: str = str(item.get("find") or item.get("old") or "")
@@ -325,12 +326,16 @@ class AgentExecutor:
             if replace and not tools.path_exists(path):
                 if transaction is not None:
                     transaction.capture(path)
-                patches.append(tools.write_file(path, replace))
+                patches.append(tools.write_file(path, normalize_model_text(replace)))
                 continue
             if transaction is not None:
                 transaction.capture(path)
             patches.append(
-                tools.apply_unified_hunk(path, find=find, replace=replace)
+                tools.apply_unified_hunk(
+                    path,
+                    find=normalize_model_text(find) if find else find,
+                    replace=normalize_model_text(replace),
+                )
             )
         applied: int = sum(1 for item in patches if item.applied)
         ok: bool = applied > 0 and all(item.applied for item in patches)
@@ -415,6 +420,27 @@ def _dry_run_payload(*, role: AgentRole, task: Task) -> str:
         return json.dumps({"approved": True, "blocking_issues": []})
     return json.dumps(
         {"verify_command": task.verify_command or "true", "notes": "dry-run"}
+    )
+
+
+def normalize_model_text(text: str) -> str:
+    """Turn over-escaped ``\\n`` / ``\\t`` from models into real whitespace.
+
+    Some local models emit a single-line file body with literal backslash-n
+    instead of JSON newlines. That writes invalid Python and shows up as
+    ``ImportError: Failed to import test module``.
+    """
+    if not text:
+        return text
+    if "\n" in text or "\t" in text:
+        return text
+    if "\\n" not in text and "\\t" not in text and "\\r" not in text:
+        return text
+    return (
+        text.replace("\\r\\n", "\n")
+        .replace("\\n", "\n")
+        .replace("\\t", "\t")
+        .replace("\\r", "\r")
     )
 
 

@@ -355,6 +355,54 @@ def test_identical_saw_does_not_block_before_retry_two(tmp_path: Path) -> None:
     assert store.get_task(1).status == TaskStatus.PENDING
 
 
+def test_normalize_model_text_unescapes_newlines() -> None:
+    from roop.executor.agent import normalize_model_text
+
+    raw = "def slugify(text):\\n    return text.lower()\\n"
+    actual = normalize_model_text(raw)
+    assert "\n" in actual
+    assert "\\n" not in actual
+    assert actual.splitlines()[0] == "def slugify(text):"
+
+
+def test_executor_writes_unescaped_content_for_new_file(tmp_path: Path) -> None:
+    import json
+
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            # Literal backslash-n inside the file body (common local-model glitch).
+            body = r"def slugify(text):\n    return text.lower()\n"
+            return ModelResponse(
+                content=json.dumps(
+                    {"files": [{"path": "src/slugify.py", "content": body}]}
+                ),
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / "src").mkdir(parents=True)
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task(
+        "unescape slugify",
+        allow_paths="src/**",
+        verify_command="true",
+    )
+    result = AgentExecutor(project, store, model=FakeModel()).execute(
+        task, AgentRole.CODER
+    )
+    assert result.ok is True
+    text = (project / "src" / "slugify.py").read_text(encoding="utf-8")
+    assert "\n" in text
+    assert "\\n" not in text
+    assert text.startswith("def slugify")
+
+
 def test_executor_creates_missing_path_from_find_replace(tmp_path: Path) -> None:
     class FakeModel:
         def chat(self, messages, *, model=None):

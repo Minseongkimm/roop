@@ -133,7 +133,14 @@ def _repair_hint(saw: str) -> str:
     if "failed to import" in text or "importerror" in text or "modulenotfounderror" in text:
         return (
             "Create BOTH implementation and test files with content. "
-            "Every import in the test must resolve."
+            "Every import in the test must resolve. "
+            "Use real newlines in file bodies; keep Python string literals valid "
+            "(no raw line breaks inside quotes)."
+        )
+    if "syntaxerror" in text:
+        return (
+            "Rewrite the file with valid Python. "
+            "Do not put raw line breaks inside quoted strings; use \\n escapes in literals."
         )
     if "assertionerror" in text or "lists differ" in text or " != " in saw:
         return (
