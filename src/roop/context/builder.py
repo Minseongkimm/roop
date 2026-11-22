@@ -16,6 +16,7 @@ from roop.context.budget import (
     estimate_tokens,
     truncate_to_tokens,
 )
+from roop.context.modules import build_module_map
 from roop.context.roles import AgentRole, get_role_prompt
 from roop.harness.fs_guard import WriteGuard
 from roop.orchestrator.tasks import Task
@@ -24,7 +25,8 @@ MAX_CONVENTIONS_CHARS: int = 2500
 MAX_FEATURE_CHARS: int = 2000
 MAX_SLICE_CHARS: int = 2400
 MAX_SLICES: int = 8
-MAX_FEEDBACK_CHARS: int = 1200
+MAX_FEEDBACK_CHARS: int = 3600
+FEEDBACK_TOKEN_RESERVE: int = 900
 MAX_PROJECT_CONTEXT_CHARS: int = 6000
 MAX_PROJECT_FILE_CHARS: int = 2400
 RG_TIMEOUT_SECONDS: float = 5.0
@@ -59,6 +61,7 @@ class ContextPacket:
     feature_context: str
     code_slices: list[CodeSlice] = field(default_factory=list)
     fixed_tests: str = ""
+    module_map: str = ""
     verifier_feedback: str = ""
     token_budget: int = DEFAULT_TOKEN_BUDGET
     estimated_tokens: int = 0
@@ -92,6 +95,8 @@ class ContextPacket:
                 self.feature_context or "_(none)_",
                 "## Code slices",
                 "\n\n".join(slices_md) if slices_md else "_(none)_",
+                "## Module map",
+                self.module_map or "_(none)_",
                 "## Fixed tests (read-only)",
                 self.fixed_tests or "_(none)_",
                 "## Verifier feedback",
@@ -165,20 +170,23 @@ class ContextBuilder:
         feature_context, remaining, hit = _fit_text(feature_context, remaining)
         truncated = truncated or hit
 
+        module_map: str = ""
+        fixed_tests: str = ""
+        if role == AgentRole.CODER:
+            module_map = build_module_map(self._project_root, task.verify_command)
+            fixed_tests = _load_fixed_tests(self._project_root, task.verify_command)
+            remaining -= estimate_tokens(module_map)
+            remaining -= estimate_tokens(fixed_tests)
+
         feedback: str = verifier_feedback.strip()
         if feedback:
             feedback = truncate_to_tokens(
                 feedback[:MAX_FEEDBACK_CHARS],
-                max_tokens=max(0, remaining // 4),
+                max_tokens=FEEDBACK_TOKEN_RESERVE,
             )
             remaining -= estimate_tokens(feedback)
         else:
             feedback = ""
-
-        fixed_tests: str = ""
-        if role == AgentRole.CODER:
-            fixed_tests = _load_fixed_tests(self._project_root, task.verify_command)
-            remaining -= estimate_tokens(fixed_tests)
 
         slices: list[CodeSlice] = []
         if include_code_slices and role in {AgentRole.CODER, AgentRole.REVIEWER, AgentRole.TESTER}:
@@ -202,6 +210,7 @@ class ContextBuilder:
             feature_context=feature_context,
             code_slices=slices,
             fixed_tests=fixed_tests,
+            module_map=module_map,
             verifier_feedback=feedback,
             token_budget=self._token_budget,
             estimated_tokens=used,

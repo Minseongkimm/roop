@@ -15,7 +15,7 @@ from roop.eval.suite import (
 )
 from roop.eval.tamper import TamperGuard, TamperResult
 from roop.orchestrator.loop import OrchestratorLoop, TickResult
-from roop.orchestrator.tasks import Task, TaskStore
+from roop.orchestrator.tasks import DEFAULT_MAX_RETRIES, Task, TaskStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +91,7 @@ def enqueue_suite(
             acceptance_criteria=item.acceptance_criteria,
             verify_command=item.verify_command,
             priority=10 if item.difficulty == "easy" else 20,
+            max_retries=DEFAULT_MAX_RETRIES,
         )
         created.append(task.id)
     return EvalEnqueueResult(

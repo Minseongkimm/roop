@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Iterable
 
 DEFAULT_PRIORITY: int = 100
-DEFAULT_MAX_RETRIES: int = 3
+DEFAULT_MAX_RETRIES: int = 4
 DEFAULT_ALLOW_PATHS: str = ".agent/**"
 
 
@@ -63,6 +63,8 @@ class Task:
     api_calls: int = 0
     estimated_cost_usd: float = 0.0
     outcome: str = ""
+    last_model_output: str = ""
+    transient_attempts: int = 0
 
 
 class TaskStore:
@@ -151,6 +153,7 @@ class TaskStore:
         to_status: TaskStatus,
         *,
         reason: str = "",
+        count_retry: bool = True,
     ) -> Task:
         task: Task = self.get_task(task_id)
         allowed: frozenset[TaskStatus] = ALLOWED_TRANSITIONS[task.status]
@@ -162,7 +165,11 @@ class TaskStore:
         final_status: TaskStatus = to_status
         retry_count: int = task.retry_count
         block_reason: str = task.block_reason
-        if task.status == TaskStatus.RUNNING and to_status == TaskStatus.PENDING:
+        if (
+            task.status == TaskStatus.RUNNING
+            and to_status == TaskStatus.PENDING
+            and count_retry
+        ):
             retry_count = task.retry_count + 1
             if retry_count >= task.max_retries:
                 final_status = TaskStatus.BLOCKED
@@ -253,7 +260,7 @@ class TaskStore:
                     priority INTEGER NOT NULL DEFAULT 100,
                     depends_on TEXT NOT NULL DEFAULT '[]',
                     verify_command TEXT NOT NULL DEFAULT '',
-                    max_retries INTEGER NOT NULL DEFAULT 3,
+                    max_retries INTEGER NOT NULL DEFAULT 4,
                     updated_at TEXT NOT NULL DEFAULT '',
                     block_reason TEXT NOT NULL DEFAULT '',
                     last_failure_feedback TEXT NOT NULL DEFAULT '',
@@ -286,6 +293,8 @@ class TaskStore:
             "api_calls": "INTEGER NOT NULL DEFAULT 0",
             "estimated_cost_usd": "REAL NOT NULL DEFAULT 0",
             "outcome": "TEXT NOT NULL DEFAULT ''",
+            "last_model_output": "TEXT NOT NULL DEFAULT ''",
+            "transient_attempts": "INTEGER NOT NULL DEFAULT 0",
         }
         for name, ddl in additions.items():
             if name not in existing:
@@ -322,6 +331,8 @@ class TaskStore:
             api_calls=int(row["api_calls"] or 0),
             estimated_cost_usd=float(row["estimated_cost_usd"] or 0.0),
             outcome=str(row["outcome"] or ""),
+            last_model_output=str(row["last_model_output"] or ""),
+            transient_attempts=int(row["transient_attempts"] or 0),
         )
 
     def set_failure_feedback(self, task_id: int, feedback: str) -> None:
@@ -377,6 +388,24 @@ class TaskStore:
             connection.commit()
         return self.get_task(task_id)
 
+    def set_last_model_output(self, task_id: int, output: str) -> None:
+        self._update_column(task_id, "last_model_output", output)
+
+    def set_transient_attempts(self, task_id: int, attempts: int) -> None:
+        self._update_column(task_id, "transient_attempts", int(attempts))
+
+    def _update_column(self, task_id: int, column: str, value: object) -> None:
+        if column not in {"last_model_output", "transient_attempts"}:
+            raise ValueError(f"unsupported column: {column}")
+        with self._connect() as connection:
+            cursor: sqlite3.Cursor = connection.execute(
+                f"UPDATE tasks SET {column} = ? WHERE id = ?",
+                (value, task_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(f"Task not found: {task_id}")
+            connection.commit()
+
     def set_outcome(self, task_id: int, outcome: str) -> None:
         with self._connect() as connection:
             cursor: sqlite3.Cursor = connection.execute(
@@ -396,8 +425,18 @@ _SELECT_COLUMNS: str = (
     "id, title, status, allow_paths, retry_count, acceptance_criteria, "
     "description, feature_ids, priority, depends_on, verify_command, "
     "max_retries, updated_at, block_reason, last_failure_feedback, "
-    "local_verify_failures, api_calls, estimated_cost_usd, outcome"
+    "local_verify_failures, api_calls, estimated_cost_usd, outcome, "
+    "last_model_output, transient_attempts"
 )
+
+
+def task_difficulty(feature_ids: str) -> str:
+    """Return easy, medium, hard, or unknown from a feature id list."""
+    parts: list[str] = [item.strip() for item in feature_ids.split(",") if item.strip()]
+    for item in parts:
+        if item in {"easy", "medium", "hard"}:
+            return item
+    return "unknown"
 
 
 def _utc_now() -> str:

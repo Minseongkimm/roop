@@ -8,8 +8,11 @@ from pathlib import Path
 
 from roop.adapters.api import api_client_from_env, should_hand_off_to_api
 from roop.adapters.model import ModelAdapter
+from roop.adapters.ollama import TransientOllamaError
 from roop.context.roles import AgentRole
-from roop.orchestrator.tasks import Task, TaskStatus, TaskStore
+from roop.orchestrator.tasks import Task, TaskStatus, TaskStore, task_difficulty
+
+TRANSIENT_REQUEUE_LIMIT: int = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +120,7 @@ class OrchestratorLoop:
             utc_now_iso,
         )
         from roop.verifier.engine import Verifier, VerifyResult
+        from roop.verifier.report import snapshot_sources
 
         assert self._project_root is not None
         started: float = time.monotonic()
@@ -156,9 +160,7 @@ class OrchestratorLoop:
                 round_log_path=str(log_path) if log_path else None,
             )
         previous_saw: str = task.last_failure_feedback
-        feedback: str = (
-            f"PREVIOUS_SAW:\n{previous_saw}" if previous_saw else ""
-        )
+        feedback: str = previous_saw
         executor: AgentExecutor = AgentExecutor(
             self._project_root,
             self._store,
@@ -172,6 +174,8 @@ class OrchestratorLoop:
                 self._role,
                 verifier_feedback=feedback,
             )
+        except TransientOllamaError as exc:
+            return self._tick_transient(task, exc, backend=backend, started=started)
         except Exception as exc:
             calls, cost = _usage_delta(api_adapter, before_calls, before_cost)
             self._store.add_usage(
@@ -282,24 +286,27 @@ class OrchestratorLoop:
                 green=True,
                 round_log_path=str(log_path) if log_path else None,
             )
+        source_text: str = snapshot_sources(self._project_root)
         if execution.transaction is not None:
             execution.transaction.rollback()
         if backend == "local":
             self._store.add_local_verify_failure(task.id)
 
         saw: str = verify.feedback()
+        if source_text:
+            saw = f"{saw}\n\n{source_text}"
         self._store.set_failure_feedback(task.id, saw)
-
-        # Allow at least a couple of repair attempts before treating an identical
-        # failure signature as a hard block (max_retries still applies).
-        if previous_saw and previous_saw == saw and task.retry_count >= 2:
+        output: str = execution.model_raw.strip()
+        repeated_output: bool = task.retry_count >= 1 and task.last_model_output == output
+        self._store.set_last_model_output(task.id, output)
+        if repeated_output:
             self._store.transition(
                 task.id,
                 TaskStatus.BLOCKED,
-                reason="identical SAW repeated",
+                reason="identical output repeated",
             )
             self._mark_terminal_failure(task.id)
-            message = f"tick BLOCKED task {task.id}: identical SAW repeated"
+            message = f"tick BLOCKED task {task.id}: identical output repeated"
             log_path = self._log_round(
                 task=task,
                 backend=backend,
@@ -378,6 +385,7 @@ class OrchestratorLoop:
         if not should_hand_off_to_api(
             local_verify_failures=task.local_verify_failures,
             dry_run=self._dry_run,
+            difficulty=task_difficulty(task.feature_ids),
         ):
             return "local", None
         if self._api_model is not None:
@@ -386,6 +394,65 @@ class OrchestratorLoop:
         if client is None:
             return "api_skipped", None
         return "api", client
+
+    def _tick_transient(
+        self,
+        task: Task,
+        exc: TransientOllamaError,
+        *,
+        backend: str,
+        started: float,
+    ) -> TickResult:
+        """Requeue a transport failure without spending a local attempt."""
+        from roop.telemetry.rounds import extract_error_signature, utc_now_iso
+
+        attempts: int = task.transient_attempts + 1
+        self._store.set_transient_attempts(task.id, attempts)
+        reason: str = f"transient ollama error: {exc}"
+        exhausted: bool = attempts >= TRANSIENT_REQUEUE_LIMIT
+        if exhausted:
+            self._store.transition(task.id, TaskStatus.BLOCKED, reason=reason[:200])
+            self._mark_terminal_failure(task.id)
+            message = f"tick BLOCKED task {task.id}: ollama unavailable"
+            status = "blocked"
+        else:
+            self._store.transition(
+                task.id,
+                TaskStatus.PENDING,
+                reason=reason[:200],
+                count_retry=False,
+            )
+            message = (
+                f"tick TRANSIENT task {task.id}: backoff retry {attempts} "
+                "does not count"
+            )
+            status = "pending"
+        log_path = self._log_round(
+            task=task,
+            backend=backend,
+            outcome="transient",
+            green=False,
+            exit_code=None,
+            error_signature=extract_error_signature(reason),
+            tests_ran=None,
+            tests_passed=None,
+            tokens_est=None,
+            model="",
+            diff_stat={},
+            message=message,
+            status=status,
+            api_calls=0,
+            estimated_cost_usd=0.0,
+            started=started,
+            timestamp=utc_now_iso(),
+        )
+        return TickResult(
+            did_work=True,
+            task_id=task.id,
+            message=message,
+            green=False,
+            round_log_path=str(log_path) if log_path else None,
+        )
 
     def _mark_terminal_failure(self, task_id: int) -> None:
         current: Task = self._store.get_task(task_id)
