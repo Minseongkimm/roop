@@ -7,7 +7,7 @@
 | 단계 | 상태 |
 |------|------|
 | 0~2b easy10 | 완료 8/10(80%) @ `2321d78`. 실패 slugify, chunk-list |
-| 2c medium10 + API 폴백 | 동결 후 clean scratch 측정 |
+| 2c medium10 + API 폴백 | 1/10(10%) 로컬 @ `87e0ead`. API 키 없음, 호출 0, 비용 0. `api_skipped` 8 |
 | 3~6 모델표/병렬/맥미니 | 미착수 |
 
 동결: 골든테스트는 읽기 전용. 로컬 검증 2회 실패 시 API. 키는 `ROOP_API_KEY`(없으면 `OPENAI_API_KEY`). 없으면 `api_skipped`.
