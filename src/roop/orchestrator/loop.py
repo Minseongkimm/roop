@@ -124,7 +124,7 @@ class OrchestratorLoop:
         except Exception as exc:
             failure = f"EXECUTION ERROR: {type(exc).__name__}: {exc}"
             self._store.set_failure_feedback(task.id, failure)
-            self._store.transition(task.id, PENDING, reason=failure[:200])
+            self._store.transition(task.id, TaskStatus.PENDING, reason=failure[:200])
             return TickResult(
                 did_work=True,
                 task_id=task.id,
