@@ -44,7 +44,6 @@ class OrchestratorLoop:
         self._execute: bool = execute
         self._dry_run: bool = dry_run
         self._model: ModelAdapter | None = model
-        self._last_saw_by_task: dict[int, str] = {}
 
     @classmethod
     def from_database(
@@ -106,10 +105,7 @@ class OrchestratorLoop:
         from roop.verifier.engine import Verifier, VerifyResult
 
         assert self._project_root is not None
-        feedback: str = ""
-        previous_saw: str | None = self._last_saw_by_task.get(task.id)
-        if previous_saw:
-            feedback = f"PREVIOUS_SAW:\n{previous_saw}"
+        feedback: str = task.last_failure_feedback
         executor: AgentExecutor = AgentExecutor(
             self._project_root,
             self._store,
@@ -125,8 +121,7 @@ class OrchestratorLoop:
         verify: VerifyResult = verifier.verify(task, execution)
         packet_path: str | None = execution.packet_path
         if verify.green:
-            self._last_saw_by_task.pop(task.id, None)
-            self._store.transition(task.id, TaskStatus.DONE)
+            self._store.set_failure_feedback(task.id, "")
             LessonStore(self._project_root).append(
                 Lesson(
                     task_id=task.id,
@@ -134,7 +129,6 @@ class OrchestratorLoop:
                     evidence=verify.saw[:200],
                 )
             )
-            self._store.set_failure_feedback(task.id, "")
             return TickResult(
                 did_work=True,
                 task_id=task.id,
@@ -146,28 +140,13 @@ class OrchestratorLoop:
                 green=True,
             )
         saw: str = verify.feedback()
-        if previous_saw is not None and previous_saw == saw:
-            self._store.transition(
-                task.id,
-                TaskStatus.BLOCKED,
-                reason="identical SAW twice",
-            )
-            self._store.set_failure_feedback(task.id, saw)
-            return TickResult(
-                did_work=True,
-                task_id=task.id,
-                message=f"tick BLOCKED task {task.id}: identical SAW twice",
-                packet_path=packet_path,
-                green=False,
-            )
-        self._last_saw_by_task[task.id] = saw
+        self._store.set_failure_feedback(task.id, saw)
         retried: Task = self._store.transition(
             task.id,
             TaskStatus.PENDING,
             reason=saw[:200],
         )
         if retried.status == TaskStatus.BLOCKED:
-            self._store.set_failure_feedback(task.id, saw)
             return TickResult(
                 did_work=True,
                 task_id=task.id,
