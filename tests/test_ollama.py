@@ -23,5 +23,9 @@ def test_chat_requests_json_format():
 
     request_body = mock_client.post.call_args.kwargs["json"]
     assert request_body["format"] == "json"
+    assert request_body["options"]["temperature"] == 0.1
+    assert request_body["options"]["repeat_penalty"] == 1.15
+    assert request_body["options"]["repeat_last_n"] == 128
+    assert request_body["options"]["num_predict"] == 8192
     assert result.content == '{"files": []}'
     assert result.done is True

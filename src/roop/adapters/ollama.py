@@ -57,6 +57,12 @@ class OllamaClient:
             "model": selected_model,
             "messages": [{"role": message.role, "content": message.content} for message in messages],
             "format": "json",
+            "options": {
+                "temperature": 0.1,
+                "repeat_penalty": 1.15,
+                "repeat_last_n": 128,
+                "num_predict": 8192,
+            },
             "stream": False,
         }
         with httpx.Client(timeout=self._timeout_seconds) as client:
