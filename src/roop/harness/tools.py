@@ -94,6 +94,14 @@ class ToolHarness:
         rel: str = str(written.relative_to(self._project_root))
         return PatchResult(path=rel, applied=True, detail="written")
 
+    def path_exists(self, relative_path: str) -> bool:
+        path = (self._project_root / relative_path).resolve()
+        try:
+            path.relative_to(self._project_root)
+        except ValueError as err:
+            raise WriteGuardError(f"Path escapes target root: {path}") from err
+        return path.is_file()
+
     def apply_unified_hunk(
         self,
         relative_path: str,
@@ -101,23 +109,31 @@ class ToolHarness:
         find: str,
         replace: str,
     ) -> PatchResult:
-        current: str = self.read_file(relative_path, max_chars=2_000_000)
-        if not current and find:
+        if not find:
             return PatchResult(
                 path=relative_path,
                 applied=False,
-                detail="file missing or empty",
+                detail="empty find string is not allowed",
             )
-        if find and find not in current:
+
+        current: str = self.read_file(relative_path, max_chars=2_000_000)
+        occurrences = current.count(find)
+
+        if occurrences == 0:
             return PatchResult(
                 path=relative_path,
                 applied=False,
                 detail="find string not present",
             )
-        if find:
-            updated: str = current.replace(find, replace, 1)
-        else:
-            updated = replace
+
+        if occurrences > 1:
+            return PatchResult(
+                path=relative_path,
+                applied=False,
+                detail=f"find string is ambiguous: {occurrences} matches",
+            )
+
+        updated: str = current.replace(find, replace, 1)
         return self.write_file(relative_path, updated)
 
     def run_command(

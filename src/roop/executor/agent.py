@@ -94,8 +94,10 @@ class AgentExecutor:
                     ChatMessage(
                         role="user",
                         content=(
-                            "Previous output was invalid. Reply with ONE JSON object only. "
-                            'Coder schema: {"files":[{"path":"...","content":"..."}]}'
+                            "Previous output was invalid. Reply with ONE valid JSON object only. "
+                            "For Coder: existing files must use "
+                            '{"files":[{"path":"...","find":"exact old text","replace":"new text"}]}. '
+                            "Use content only to create new files. Never overwrite existing files."
                         ),
                     )
                 ]
@@ -285,13 +287,26 @@ class AgentExecutor:
             path: str = str(item.get("path") or item.get("file") or "").strip()
             if not path:
                 continue
-            if transaction is not None:
-                transaction.capture(path)
+
             if "content" in item:
+                if tools.path_exists(path):
+                    patches.append(
+                        PatchResult(
+                            path=path,
+                            applied=False,
+                            detail="full-file overwrite of existing files is not allowed",
+                        )
+                    )
+                    continue
+                if transaction is not None:
+                    transaction.capture(path)
                 patches.append(tools.write_file(path, str(item.get("content") or "")))
                 continue
+
             find: str = str(item.get("find") or item.get("old") or "")
             replace: str = str(item.get("replace") or item.get("new") or item.get("hunk") or "")
+            if transaction is not None:
+                transaction.capture(path)
             patches.append(
                 tools.apply_unified_hunk(path, find=find, replace=replace)
             )
@@ -331,9 +346,10 @@ def _messages_from_packet(packet: ContextPacket) -> Sequence[ChatMessage]:
         user_parts.extend(["## Verifier feedback", packet.verifier_feedback])
     if packet.role == AgentRole.CODER:
         user_parts.append(
-            "Respond with a single JSON object only, schema:\n"
-            '{"files":[{"path":"relative/path.md","content":"full file contents"}]}\n'
-            "path must be inside allow_paths. Prefer writing the full file content."
+            "Respond with a single JSON object only. For existing files, use exact partial edits:\\n"
+            '{"files":[{"path":"relative/path.py","find":"exact existing text","replace":"replacement text"}]}\\n'
+            "The find string must match exactly once. Never return full contents for an existing file. "
+            "Use content only when creating a new file. Every path must be inside allow_paths."
         )
     else:
         user_parts.append("Respond with a single JSON object only.")

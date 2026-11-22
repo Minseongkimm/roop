@@ -10,7 +10,7 @@ from roop.context.roles import AgentRole
 from roop.executor.agent import AgentExecutor, ExecutionResult
 from roop.executor.json_util import parse_json_object
 from roop.harness.fs_guard import WriteGuard
-from roop.harness.tools import FileTransaction
+from roop.harness.tools import FileTransaction, ToolHarness
 from roop.memory.lessons import Lesson, LessonStore
 from roop.orchestrator.loop import OrchestratorLoop, TickResult
 from roop.orchestrator.tasks import Task, TaskStatus, TaskStore
@@ -203,7 +203,7 @@ def test_orchestrator_rolls_back_file_when_verification_fails(tmp_path: Path) ->
     class FakeModel:
         def chat(self, messages, *, model=None):
             return ModelResponse(
-                content='{"files":[{"path":"src/example.py","content":"changed"}]}',
+                content='{"files":[{"path":"src/example.py","find":"original","replace":"changed"}]}',
                 model="fake",
             )
 
@@ -240,3 +240,100 @@ def test_orchestrator_rolls_back_file_when_verification_fails(tmp_path: Path) ->
     assert result.did_work is True
     assert result.green is False
     assert target.read_text(encoding="utf-8") == "original"
+
+
+def test_patch_requires_exactly_one_match(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    project.mkdir()
+    target = project / "example.py"
+    target.write_text("before\nvalue = 1\nafter\n", encoding="utf-8")
+    harness = ToolHarness(
+        project,
+        WriteGuard(project).with_allow_paths("**"),
+    )
+
+    result = harness.apply_unified_hunk(
+        "example.py",
+        find="value = 1",
+        replace="value = 2",
+    )
+
+    assert result.applied is True
+    assert target.read_text(encoding="utf-8") == "before\nvalue = 2\nafter\n"
+
+
+def test_patch_rejects_missing_match(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    project.mkdir()
+    target = project / "example.py"
+    target.write_text("value = 1\n", encoding="utf-8")
+    harness = ToolHarness(
+        project,
+        WriteGuard(project).with_allow_paths("**"),
+    )
+
+    result = harness.apply_unified_hunk(
+        "example.py",
+        find="value = 9",
+        replace="value = 2",
+    )
+
+    assert result.applied is False
+    assert target.read_text(encoding="utf-8") == "value = 1\n"
+
+
+def test_patch_rejects_ambiguous_match(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    project.mkdir()
+    target = project / "example.py"
+    target.write_text("value = 1\nvalue = 1\n", encoding="utf-8")
+    harness = ToolHarness(
+        project,
+        WriteGuard(project).with_allow_paths("**"),
+    )
+
+    result = harness.apply_unified_hunk(
+        "example.py",
+        find="value = 1",
+        replace="value = 2",
+    )
+
+    assert result.applied is False
+    assert "ambiguous" in result.detail
+    assert target.read_text(encoding="utf-8") == "value = 1\nvalue = 1\n"
+
+
+def test_executor_rejects_full_content_for_existing_file(tmp_path: Path) -> None:
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            return ModelResponse(
+                content='{"files":[{"path":"src/example.py","content":"destroyed"}]}',
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / "src").mkdir(parents=True)
+    target = project / "src" / "example.py"
+    target.write_text("original\n", encoding="utf-8")
+
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task(
+        "reject overwrite",
+        allow_paths="src/**",
+        verify_command="true",
+    )
+    executor = AgentExecutor(project, store, model=FakeModel())
+
+    result = executor.execute(task, AgentRole.CODER)
+
+    assert result.ok is False
+    assert len(result.patches) == 1
+    assert result.patches[0].applied is False
+    assert "full-file overwrite" in result.patches[0].detail
+    assert target.read_text(encoding="utf-8") == "original\n"
