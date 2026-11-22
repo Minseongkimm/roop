@@ -54,9 +54,19 @@ pytest
 - No worktree/branch creation yet
 - Cloud API lane is off by default
 
+## Loop visualizer
+
+Interactive walkthrough of one orchestrator tick cycle:
+
+```bash
+cd web && python3 -m http.server 8765 --bind 127.0.0.1
+# open http://127.0.0.1:8765
+```
+
 ## Layout
 
 ```text
+web/                     # loop visualizer (static site)
 src/roop/
   cli.py                 # typer entrypoint
   doctor.py

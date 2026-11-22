@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Roop — 틱 루프</title>
+    <meta
+      name="description"
+      content="Roop 오케스트레이터가 한 틱에 하는 일: 상태 → 역할 → 패킷 → 모델 → 하니스 → 검증"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true">
+      <div class="grid-plane"></div>
+      <div class="orbit-ring" id="hero-orbit"></div>
+    </div>
+
+    <header class="hero">
+      <p class="brand">Roop</p>
+      <h1 class="headline">한 틱에 한 결정.</h1>
+      <p class="lede">
+        작은 로컬 모델은 “알아서” 하지 않습니다. Orchestrator가 상태를 보고, 역할
+        하나를 고르고, 하니스만 실행한 뒤 Verifier가 실측합니다.
+      </p>
+      <div class="cta-row">
+        <a class="btn primary" href="#play">틱 돌려보기</a>
+        <a class="btn ghost" href="#anatomy">루프 해부</a>
+      </div>
+    </header>
+
+    <main>
+      <section id="anatomy" class="section anatomy">
+        <h2>매 틱의 6단계</h2>
+        <p class="section-lede">프로그램이 모델을 부릅니다. 모델이 프로그램을 부르지 않습니다.</p>
+        <ol class="steps" id="anatomy-steps">
+          <li data-step="0">
+            <span class="step-num">01</span>
+            <div>
+              <strong>상태만 본다</strong>
+              <p>SQLite task · <code>.agent/state</code> · git</p>
+            </div>
+          </li>
+          <li data-step="1">
+            <span class="step-num">02</span>
+            <div>
+              <strong>역할 하나</strong>
+              <p>Planner · Coder · Reviewer · Tester</p>
+            </div>
+          </li>
+          <li data-step="2">
+            <span class="step-num">03</span>
+            <div>
+              <strong>역할용 패킷</strong>
+              <p>짧은 시스템 프롬프트 + Task JSON + 파일 슬라이스</p>
+            </div>
+          </li>
+          <li data-step="3">
+            <span class="step-num">04</span>
+            <div>
+              <strong>스키마 강제</strong>
+              <p>JSON만. 파싱 실패면 1회 재생성 후 Blocked 후보</p>
+            </div>
+          </li>
+          <li data-step="4">
+            <span class="step-num">05</span>
+            <div>
+              <strong>하니스만 실행</strong>
+              <p>모델 서술 ≠ 실행. 쓰기는 기본 <code>.agent/**</code></p>
+            </div>
+          </li>
+          <li data-step="5">
+            <span class="step-num">06</span>
+            <div>
+              <strong>Verifier 실측</strong>
+              <p>exit code · allow_paths · next_state는 코드가 결정</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section id="play" class="section play">
+        <h2>시나리오 재생</h2>
+        <p class="section-lede">
+          “로그인 리다이렉트 고쳐 · ~/apps/shop” — 틱을 직접 넘겨 보세요.
+        </p>
+
+        <div class="console" role="region" aria-label="루프 시뮬레이터">
+          <div class="console-top">
+            <div class="meter" aria-hidden="true">
+              <span class="meter-label">tick</span>
+              <span class="meter-value" id="tick-index">0</span>
+            </div>
+            <div class="role-pill" id="role-pill">idle</div>
+            <div class="queue-meta" id="queue-meta">queue · pending 1</div>
+          </div>
+
+          <div class="stage">
+            <svg class="loop-svg" viewBox="0 0 640 360" role="img" aria-label="오케스트레이터 루프 다이어그램">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+                </marker>
+              </defs>
+              <g class="wire" stroke="currentColor" fill="none" marker-end="url(#arrow)">
+                <path id="wire-path" d="M 90 180 C 160 60, 480 60, 550 180 C 480 300, 160 300, 90 180" />
+              </g>
+              <circle class="runner" id="runner" r="8" cx="90" cy="180" />
+              <g class="nodes">
+                <g class="node" data-node="state" transform="translate(70,160)">
+                  <rect width="80" height="40" rx="2" />
+                  <text x="40" y="25" text-anchor="middle">state</text>
+                </g>
+                <g class="node" data-node="role" transform="translate(200,70)">
+                  <rect width="80" height="40" rx="2" />
+                  <text x="40" y="25" text-anchor="middle">role</text>
+                </g>
+                <g class="node" data-node="packet" transform="translate(360,70)">
+                  <rect width="90" height="40" rx="2" />
+                  <text x="45" y="25" text-anchor="middle">packet</text>
+                </g>
+                <g class="node" data-node="model" transform="translate(500,160)">
+                  <rect width="80" height="40" rx="2" />
+                  <text x="40" y="25" text-anchor="middle">model</text>
+                </g>
+                <g class="node" data-node="harness" transform="translate(360,250)">
+                  <rect width="90" height="40" rx="2" />
+                  <text x="45" y="25" text-anchor="middle">harness</text>
+                </g>
+                <g class="node" data-node="verify" transform="translate(200,250)">
+                  <rect width="90" height="40" rx="2" />
+                  <text x="45" y="25" text-anchor="middle">verify</text>
+                </g>
+              </g>
+            </svg>
+
+            <aside class="panel">
+              <p class="panel-kicker" id="panel-kicker">대기</p>
+              <h3 id="panel-title">재생을 누르면 첫 틱이 시작합니다</h3>
+              <p id="panel-body">
+                Orchestrator는 큐에서 pending task 하나를 집어 이번 틱의 역할만
+                고릅니다. 계획·코딩·테스트를 한 프롬프트에 넣지 않습니다.
+              </p>
+              <pre class="panel-code" id="panel-code" hidden></pre>
+            </aside>
+          </div>
+
+          <div class="controls">
+            <button type="button" class="btn primary" id="btn-play">재생</button>
+            <button type="button" class="btn ghost" id="btn-step">한 틱</button>
+            <button type="button" class="btn ghost" id="btn-reset">리셋</button>
+            <label class="auto-label">
+              <input type="checkbox" id="auto-play" checked />
+              자동 진행
+            </label>
+          </div>
+
+          <div class="trace" aria-live="polite">
+            <h3>트레이스</h3>
+            <ol id="trace-list"></ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="section rules">
+        <h2>작은 모델이 버티는 규칙</h2>
+        <ul class="rule-list">
+          <li>
+            <strong>한 틱 = 한 결정</strong>
+            <span>계획+코딩+테스트를 한 번에 시키지 않음</span>
+          </li>
+          <li>
+            <strong>디스크가 기억</strong>
+            <span>채팅 히스토리 대신 <code>.agent/</code> + SQLite</span>
+          </li>
+          <li>
+            <strong>GREEN은 코드 전에</strong>
+            <span>AC·테스트 명령을 Task 생성 시점에 고정</span>
+          </li>
+          <li>
+            <strong>같은 SAW 두 번이면 Blocked</strong>
+            <span>노력 부족이 아니라 정보/프레임 문제</span>
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Roop Phase 0 ·
+        <a href="https://github.com/Minseongkimm/roop">github.com/Minseongkimm/roop</a>
+      </p>
+    </footer>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
