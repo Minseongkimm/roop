@@ -58,6 +58,7 @@ class Task:
     max_retries: int = DEFAULT_MAX_RETRIES
     updated_at: str = ""
     block_reason: str = ""
+    last_failure_feedback: str = ""
 
 
 class TaskStore:
@@ -92,9 +93,9 @@ class TaskStore:
                 INSERT INTO tasks (
                     title, status, allow_paths, retry_count, acceptance_criteria,
                     description, feature_ids, priority, depends_on, verify_command,
-                    max_retries, updated_at, block_reason
+                    max_retries, updated_at, block_reason, last_failure_feedback
                 )
-                VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, '')
+                VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, '', '')
                 """,
                 (
                     title,
@@ -249,7 +250,8 @@ class TaskStore:
                     verify_command TEXT NOT NULL DEFAULT '',
                     max_retries INTEGER NOT NULL DEFAULT 3,
                     updated_at TEXT NOT NULL DEFAULT '',
-                    block_reason TEXT NOT NULL DEFAULT ''
+                    block_reason TEXT NOT NULL DEFAULT '',
+                    last_failure_feedback TEXT NOT NULL DEFAULT ''
                 )
                 """
             )
@@ -270,6 +272,7 @@ class TaskStore:
             "max_retries": "INTEGER NOT NULL DEFAULT 3",
             "updated_at": "TEXT NOT NULL DEFAULT ''",
             "block_reason": "TEXT NOT NULL DEFAULT ''",
+            "last_failure_feedback": "TEXT NOT NULL DEFAULT ''",
         }
         for name, ddl in additions.items():
             if name not in existing:
@@ -301,13 +304,28 @@ class TaskStore:
             ),
             updated_at=str(row["updated_at"] or ""),
             block_reason=str(row["block_reason"] or ""),
+            last_failure_feedback=str(row["last_failure_feedback"] or ""),
         )
+
+    def set_failure_feedback(self, task_id: int, feedback: str) -> None:
+        with self._connect() as connection:
+            cursor: sqlite3.Cursor = connection.execute(
+                """
+                UPDATE tasks
+                SET last_failure_feedback = ?
+                WHERE id = ?
+                """,
+                (feedback, task_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(f"Task not found: {task_id}")
+            connection.commit()
 
 
 _SELECT_COLUMNS: str = (
     "id, title, status, allow_paths, retry_count, acceptance_criteria, "
     "description, feature_ids, priority, depends_on, verify_command, "
-    "max_retries, updated_at, block_reason"
+    "max_retries, updated_at, block_reason, last_failure_feedback"
 )
 
 
