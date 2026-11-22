@@ -1,6 +1,6 @@
 # Roop 진척 체크포인트
 
-기준: 2026-11-22 21:55 (Asia/Seoul)  
+기준: 2026-11-22 22:03 (Asia/Seoul)  
 하드웨어: MacBook Air M3 16GB (맥미니 아직 아님)  
 모델: `qwen2.5-coder:7b` (로컬 Ollama)
 
@@ -13,9 +13,9 @@ Cursor는 엔진 수정용, 반복 실험은 로컬 Roop.
 | 단계 | 내용 | 상태 |
 |------|------|------|
 | 0 | 파이프라인 1바퀴 GREEN (실파일+unittest) | **완료** — playground `math_utils` Task #1 done |
-| 1 | 관측성: JSONL / night report / hard-stop `wip/` | **거의 완료** — 코드·테스트 있음, 커밋 전 |
+| 1 | 관측성: JSONL / night report / hard-stop `wip/` | **완료** — `87e88b3` 푸시 |
 | 2a | eval suite 20개 정의 (easy10+medium10) | **완료** — `evals/v1/manifest.json` |
-| 2b | easy 성공률 안정 측정 | **진행중** — 신규파일 find/replace 정규화 추가, 성공률 재측정은 다음 |
+| 2b | easy 성공률 안정 측정 | **진행중** — clean scratch 5개 기준 **60%** (3/5) |
 | 2c | medium 성공률 측정 | **일부만** — merge/lru GREEN, 나머지 미완/중단 |
 | 3 | 모델 크기 표 (7B / 에어최대 / 27B API) | **미착수** |
 | 4 | Escape Hatch (막힐 때만 API) | **미착수** |
@@ -32,11 +32,11 @@ Cursor는 엔진 수정용, 반복 실험은 로컬 Roop.
 - `.cursorignore`, `docs/CURSOR_BUDGET.md`
 - Roop pytest: **58 passed**
 
-## playground 실측 요약
+## playground / scratch 실측 요약
 - validation Task #1: **done** (mean/median)
-- 살아 있는 코드 예: `clamp`, `stack`, `chunk`, `flatten`, `merge`, `lru`, `math_utils`
-- eval 대략: easy ~30–50%대 (DB별), blocked 다수 = 모델 실패+동일에러 재시도
-- night3: 강제 중단됨 → running 잔여를 pending으로 복구함
+- **2026-11-22 clean scratch easy5:** clamp/stack/safe-div **GREEN**, slugify/parse-kv **blocked** → **60%**
+- 워크스페이스: `~/Desktop/roop-eval-scratch`
+- 실패 패턴: slugify/kv는 동일 SAW 반복 block (모델 품질/프롬프트 쪽)
 
 ## 운영 규칙 (토큰)
 - Cursor: 하루 1목표 / 새 채팅 / `.cursorignore` 유지
@@ -49,5 +49,5 @@ Cursor는 엔진 수정용, 반복 실험은 로컬 Roop.
 - 최신 푸시: `fd16a7d` — Stage1/2 관측성·eval·패치 정규화 (2026-11-22)
 
 ## 다음 Cursor 세션 (1줄만)
-**목표:** 로컬 터미널에서 easy 5개 `night` + scorecard만 (Cursor 거의 끔).  
-**하지 말 것:** night 전체 20, medium 일괄, API/맥미니.
+**목표:** slugify/parse-kv blocked 원인 1개만 고친다 (또는 easy 나머지 5개 재측정).  
+**하지 말 것:** 밤새 night, medium 일괄, API/맥미니.
