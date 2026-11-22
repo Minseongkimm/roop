@@ -110,3 +110,44 @@ def test_tick_writes_context_packet(tmp_path: Path) -> None:
     assert "Coder" in Path(result.packet_path).read_text(encoding="utf-8") or (
         "coder" in Path(result.packet_path).read_text(encoding="utf-8").lower()
     )
+
+def test_code_slices_include_explicit_allowed_files(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    source = project / "src" / "roop" / "tasks.py"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "class TaskStore:\n    def create_task(self):\n        pass\n",
+        encoding="utf-8",
+    )
+
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task(
+        "부모-자식 관계 지원",
+        description="SQLite Task 저장소에 parent_task_id를 추가한다.",
+        allow_paths="src/roop/tasks.py",
+    )
+
+    packet = ContextBuilder(project).build(task, AgentRole.CODER)
+
+    assert any(item.path == "src/roop/tasks.py" for item in packet.code_slices)
+    assert any("TaskStore" in item.content for item in packet.code_slices)
+def test_rg_files_searches_multiple_terms_with_or(tmp_path: Path) -> None:
+    from roop.context.builder import _rg_files
+
+    first = tmp_path / "first.py"
+    second = tmp_path / "second.py"
+    third = tmp_path / "third.py"
+
+    first.write_text("class TaskStore:\n    pass\n", encoding="utf-8")
+    second.write_text("parent_task_id = None\n", encoding="utf-8")
+    third.write_text("unrelated = True\n", encoding="utf-8")
+
+    results = _rg_files(
+        project_root=tmp_path,
+        query="TaskStore|parent_task_id",
+        limit=3,
+    )
+
+    result_names = {path.name for path in results}
+
+    assert result_names == {"first.py", "second.py"}

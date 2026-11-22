@@ -234,34 +234,78 @@ class ContextBuilder:
     ) -> tuple[list[CodeSlice], bool]:
         if remaining_tokens <= 0:
             return [], True
+
+        hits: list[Path] = []
+
+        for pattern in task.allow_paths.split(","):
+            pattern = pattern.strip()
+            if not pattern or any(char in pattern for char in "*?[]"):
+                continue
+
+            candidate = (self._project_root / pattern).resolve()
+
+            try:
+                candidate.relative_to(self._project_root)
+            except ValueError:
+                continue
+
+            if candidate.is_file():
+                hits.append(candidate)
+
         query: str = _search_query_from_task(task)
-        if not query:
-            return [], False
-        hits: list[Path] = _rg_files(
-            project_root=self._project_root,
-            query=query,
-            limit=MAX_SLICES,
-        )
+        if query:
+            hits.extend(
+                _rg_files(
+                    project_root=self._project_root,
+                    query=query,
+                    limit=MAX_SLICES,
+                )
+            )
+
+        unique_hits: list[Path] = []
+        seen: set[Path] = set()
+
+        for path in hits:
+            resolved = path.resolve()
+            if resolved in seen or not resolved.is_file():
+                continue
+
+            try:
+                resolved.relative_to(self._project_root)
+            except ValueError:
+                continue
+
+            seen.add(resolved)
+            unique_hits.append(resolved)
+
+            if len(unique_hits) >= MAX_SLICES:
+                break
+
         slices: list[CodeSlice] = []
         budget_left: int = remaining_tokens
         truncated: bool = False
         per_slice: int = max(200, remaining_tokens // max(1, MAX_SLICES))
-        for path in hits:
+
+        for path in unique_hits:
             if budget_left <= 0:
                 truncated = True
                 break
+
             raw: str = _read_file_head(path, max_chars=MAX_SLICE_CHARS)
             if not raw:
                 continue
+
             content: str = truncate_to_tokens(raw, max_tokens=min(per_slice, budget_left))
             tokens: int = estimate_tokens(content)
+
             if tokens <= 0:
                 continue
+
             rel: str = str(path.relative_to(self._project_root))
             slices.append(CodeSlice(path=rel, content=content, tokens=tokens))
             budget_left -= tokens
-        return slices, truncated
 
+        return slices, truncated
 
 
 def _collect_project_context(project_root: Path) -> str:
@@ -412,37 +456,67 @@ def _load_feature_context(agent_root: Path, feature_ids: str) -> str:
 
 def _search_query_from_task(task: Task) -> str:
     parts: list[str] = []
+    ignored = {
+        "demo", "task", "the", "and", "for", "with",
+        "from", "into", "this", "that", "add", "update",
+        "implement", "support", "구현", "추가", "수정",
+        "지원", "작업", "기능",
+    }
+
+    sources = [task.title, task.description or ""]
+
     if task.feature_ids:
-        parts.extend(part.strip() for part in task.feature_ids.split(",") if part.strip())
-    for token in task.title.replace(":", " ").replace("/", " ").split():
-        cleaned: str = "".join(ch for ch in token if ch.isalnum() or ch in "-_")
-        if len(cleaned) >= 3:
-            parts.append(cleaned)
-    # Prefer first meaningful token; rg uses fixed-string via -F in helper.
-    for part in parts:
-        if part.lower() not in {"demo", "task", "the", "and", "for"}:
-            return part
-    return parts[0] if parts else ""
+        sources.append(task.feature_ids)
+
+    for source in sources:
+        normalized = (
+            source.replace(":", " ")
+            .replace("/", " ")
+            .replace(",", " ")
+            .replace(".", " ")
+            .replace("(", " ")
+            .replace(")", " ")
+        )
+
+        for token in normalized.split():
+            cleaned = "".join(
+                ch for ch in token
+                if ch.isalnum() or ch in "-_"
+            )
+
+            if len(cleaned) < 3 or cleaned.lower() in ignored:
+                continue
+
+            if cleaned not in parts:
+                parts.append(cleaned)
+
+            if len(parts) >= 5:
+                return "|".join(parts)
+
+    return "|".join(parts)
 
 
 def _rg_files(*, project_root: Path, query: str, limit: int) -> list[Path]:
+    queries = [item.strip() for item in query.split("|") if item.strip()]
+    if not queries or limit <= 0:
+        return []
+
     command: list[str] = [
         "rg",
         "-l",
         "-F",
-        "--glob",
-        "!node_modules/**",
-        "--glob",
-        "!.git/**",
-        "--glob",
-        "!.agent/**",
-        "--glob",
-        "!dist/**",
-        "--glob",
-        "!build/**",
-        query,
-        str(project_root),
+        "--glob", "!node_modules/**",
+        "--glob", "!.git/**",
+        "--glob", "!.agent/**",
+        "--glob", "!dist/**",
+        "--glob", "!build/**",
     ]
+
+    for item in queries:
+        command.extend(["-e", item])
+
+    command.append(str(project_root))
+
     try:
         completed: subprocess.CompletedProcess[str] = subprocess.run(
             command,
@@ -453,15 +527,22 @@ def _rg_files(*, project_root: Path, query: str, limit: int) -> list[Path]:
         )
     except (OSError, subprocess.TimeoutExpired):
         return []
+
     if completed.returncode not in (0, 1):
         return []
+
     paths: list[Path] = []
     for line in completed.stdout.splitlines():
-        candidate: Path = Path(line.strip())
+        candidate = Path(line)
+        if not candidate.is_absolute():
+            candidate = project_root / candidate
+
         if candidate.is_file():
             paths.append(candidate)
+
         if len(paths) >= limit:
             break
+
     return paths
 
 
