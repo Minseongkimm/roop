@@ -94,3 +94,46 @@
 | config-defaults | api_skipped | 2 | 65s | nested merge 실패 | fail | 3 | 105s | data가 defaults에 덮임, 같은 출력 |
 | graph-topo | local_pass | 2 | 82s | 1회 실패 후 통과 | local_pass | 1 | 45s | 1회에 통과 |
 | query-url | api_skipped | 2 | 78s | query 파싱 실패 | fail | 4 | 163s | `%20`을 공백으로 안 풂 |
+
+## 2026-11-23 검증용 Best-of-5 (`e656e3f`)
+- 모델 `qwen2.5-coder:7b`, 런타임 `num_ctx 8192` 확인. API 호출 0. 측정 중 코드 수정 없음
+- 상한: 독립 생성 5회(온도 0.0, 0.2, 0.4, 0.6, 0.8). 로컬 수리 4회는 곱하지 않음. 생성 1회 240초, 태스크 600초
+- 워크스페이스: Roop `~/Desktop/roop-eval-heldout-roop`, Aider `~/Desktop/roop-eval-heldout-aider`
+- Aider 0.86.2는 Python 3.12 `.venv-aider`에 설치. `--edit-format whole --no-auto-commits`, 태스크의 src 파일을 모두 추가. 판정은 하네스
+- 벽시계 1시간 24분. Roop 38분, Aider 46분
+- 형식 오류 비율: Roop 0/103, Aider 0/86
+- 실패 상위 3(두 엔진 합, 5회에도 실패한 태스크): assertion 14, syntax 8, missing module 3
+- Roop 실패만: syntax 8, assertion 7, test failed 1. Aider 실패만: assertion 7, missing module 3, test failed 1
+
+| 태스크 | 난이도 | Roop | Roop 시간 | Roop 원인 | Aider | Aider 시간 | Aider 원인 |
+|--------|--------|------|-----------|-----------|-------|------------|------------|
+| wrap-text | easy | 실패 | 65s | syntax | 실패 | 83s | assertion |
+| parse-int-list | easy | 실패 | 50s | assertion | 실패 | 96s | assertion |
+| rotate-left | easy | 1회 | 11s | - | 5회 | 107s | - |
+| strip-prefix | easy | 1회 | 7s | - | 1회 | 7s | - |
+| is-anagram | easy | 1회 | 9s | - | 1회 | 14s | - |
+| running-max | easy | 1회 | 10s | - | 1회 | 11s | - |
+| join-url-path | easy | 실패 | 51s | assertion | 실패 | 65s | assertion |
+| mask-email | easy | 실패 | 66s | assertion | 실패 | 66s | assertion |
+| word-count | easy | 실패 | 38s | syntax | 1회 | 27s | - |
+| pad-left | easy | 5회 | 55s | - | 5회 | 44s | - |
+| drop-none | easy | 1회 | 9s | - | 1회 | 7s | - |
+| parse-bool | easy | 1회 | 12s | - | 1회 | 12s | - |
+| zip-strict | easy | 1회 | 10s | - | 1회 | 9s | - |
+| most-frequent | easy | 5회 | 20s | - | 5회 | 32s | - |
+| collapse-spaces | easy | 1회 | 8s | - | 1회 | 7s | - |
+| semver-cmp | medium | 실패 | 118s | syntax | 1회 | 27s | - |
+| point-manhattan | medium | 실패 | 94s | assertion | 실패 | 112s | assertion |
+| roman-pair | medium | 실패 | 177s | assertion | 실패 | 246s | assertion |
+| matrix-basic | medium | 실패 | 122s | syntax | 1회 | 27s | - |
+| html-attr | medium | 실패 | 169s | syntax | 1회 | 75s | - |
+| count-merge | medium | 5회 | 134s | - | 1회 | 34s | - |
+| email-domain | medium | 1회 | 28s | - | 5회 | 158s | - |
+| span-contains | medium | 5회 | 89s | - | 실패 | 129s | test failed |
+| line-stats | medium | 실패 | 89s | syntax | 5회 | 182s | - |
+| ratio-math | medium | 실패 | 144s | test failed | 1회 | 43s | - |
+| temp-convert | medium | 실패 | 173s | syntax | 실패 | 376s | missing module |
+| bbox-area | medium | 1회 | 37s | - | 5회 | 69s | - |
+| level-filter | medium | 실패 | 146s | assertion | 실패 | 201s | missing module |
+| prefix-table | medium | 실패 | 131s | syntax | 실패 | 285s | missing module |
+| inventory-sku | medium | 실패 | 215s | assertion | 실패 | 211s | assertion |
