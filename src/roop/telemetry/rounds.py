@@ -39,6 +39,11 @@ class RoundRecord:
     patches_total: int = 0
     message: str = ""
     status: str = ""
+    provider: str = "local"
+    outcome: str = ""
+    api_calls: int = 0
+    estimated_cost_usd: float = 0.0
+    elapsed_seconds: float = 0.0
 
     def to_json(self) -> str:
         payload: dict[str, Any] = asdict(self)

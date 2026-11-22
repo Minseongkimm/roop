@@ -160,13 +160,55 @@ def test_executor_dry_run_planner_enqueues(tmp_path: Path) -> None:
     (project / ".agent" / "project" / "overview.md").write_text("o\n", encoding="utf-8")
     db: Path = project / ".agent" / "t.sqlite3"
     store: TaskStore = TaskStore(db)
-    task: Task = store.create_task("goal")
+    task: Task = store.create_task(
+        "goal",
+        verify_command="python3 -c \"print(1)\"",
+    )
     executor: AgentExecutor = AgentExecutor(project, store, dry_run=True)
     # Act
     result: ExecutionResult = executor.execute(task, AgentRole.PLANNER)
     # Assert
     assert result.ok is True
     assert len(result.enqueued_task_ids) == 1
+
+
+def test_planner_skips_tasks_without_verify_command(tmp_path: Path) -> None:
+    import json
+
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            return ModelResponse(
+                content=json.dumps(
+                    {
+                        "tasks": [
+                            {
+                                "title": "real",
+                                "verify_command": "python3 -c \"print(1)\"",
+                            },
+                            {"title": "missing", "verify_command": ""},
+                            {"title": "noop", "verify_command": "true"},
+                        ]
+                    }
+                ),
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / ".agent" / "project").mkdir(parents=True)
+    (project / ".agent" / "project" / "overview.md").write_text("o\n", encoding="utf-8")
+    store = TaskStore(project / ".agent" / "t.sqlite3")
+    task = store.create_task("goal", verify_command="python3 -c \"print(1)\"")
+    executor = AgentExecutor(project, store, model=FakeModel())
+    result = executor.execute(task, AgentRole.PLANNER)
+    assert result.enqueued_task_ids
+    created = [store.get_task(task_id) for task_id in result.enqueued_task_ids]
+    assert [item.title for item in created] == ["real"]
 
 def test_file_transaction_rolls_back_existing_file(tmp_path: Path) -> None:
     project = tmp_path / "app"
