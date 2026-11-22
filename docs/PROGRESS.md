@@ -1,18 +1,16 @@
 # Roop PROGRESS
 
 하드웨어: MacBook Air M3 16GB · 로컬: `qwen2.5-coder:7b` (`num_ctx 8192`) · API: hard만
-최종목표: 로컬이 초~중상 개발을 밤새 수행, 최상만 API.
-엔진 동결 커밋: `d03a07a`
+최종목표: 로컬 easy 90%, medium 80%. 검증용 실패로는 엔진을 고치지 않는다.
+엔진 동결 커밋: `d03a07a` (비교 직전 커밋으로 다시 동결)
 
 | 단계 | 상태 |
 |------|------|
-| 0~2b easy10 | 8/10(80%) @ `2321d78`. 실패 slugify, chunk-list |
-| 2c/2d medium10 | 7B·14B 각 1/10 @ `87e0ead`. 통과는 graph-topo |
-| 시험지 | easy·medium 정답 10/10, 빈 구현 0/10. 골든테스트 수정 없음 |
-| 2e 측정 | easy 8/10(3분 1초), medium 1/10(20분 1초) @ `d03a07a`. API 호출 0 |
+| 0~2e | easy 8/10, medium 1/10 @ `d03a07a`. API 호출 0 |
+| 1 시험지 | easy 30, medium 30. 연습 15(기존 10 포함) / 검증 15. 정답 GREEN, 빈 구현 RED |
+| 2 Best-of-5 | 아직 |
+| 3 Aider | 아직 |
+| 4 비교 | 아직 |
 
-결론: 실패 본문·모듈 맵·로컬 4회 후에도 easy 80%, medium 10%. 점수는 그대로다.
-
-동결: 골든테스트는 읽기 전용. easy·medium은 API를 호출하지 않는다. hard만 로컬 2회 실패 후 API.
+동결: 골든테스트는 읽기 전용. easy·medium은 API를 호출하지 않는다.
 운영: `docs/MAP.md` · 과거: `docs/HISTORY.md` · 체크: `make check`
-다음 병목: 7B가 두 번째 src 파일을 빼먹거나, 틀린 파일을 같은 출력으로 반복한다.

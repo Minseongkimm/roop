@@ -19,6 +19,8 @@ class EvalTask:
     verify_command: str
     protected_globs: tuple[str, ...] = ()
     golden_test: str = ""
+    split: str = "practice"
+    src_files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +33,16 @@ class EvalSuite:
     def by_difficulty(self, difficulty: str) -> list[EvalTask]:
         needle: str = difficulty.lower()
         return [item for item in self.tasks if item.difficulty.lower() == needle]
+
+    def by_split(self, split: str, difficulty: str | None = None) -> list[EvalTask]:
+        needle: str = split.lower()
+        selected: list[EvalTask] = [
+            item for item in self.tasks if item.split.lower() == needle
+        ]
+        if difficulty is None:
+            return selected
+        level: str = difficulty.lower()
+        return [item for item in selected if item.difficulty.lower() == level]
 
 
 def load_suite(manifest_path: Path) -> EvalSuite:
@@ -52,6 +64,13 @@ def load_suite(manifest_path: Path) -> EvalSuite:
         protected: tuple[str, ...] = ()
         if isinstance(protected_raw, list):
             protected = tuple(str(entry) for entry in protected_raw if str(entry).strip())
+        split: str = str(item.get("split") or "practice").strip().lower()
+        if split not in {"practice", "heldout"}:
+            raise ValueError(f"invalid split for {task_id}: {split}")
+        src_raw: Any = item.get("src_files") or []
+        src_files: tuple[str, ...] = ()
+        if isinstance(src_raw, list):
+            src_files = tuple(str(entry) for entry in src_raw if str(entry).strip())
         tasks.append(
             EvalTask(
                 id=task_id,
@@ -63,6 +82,8 @@ def load_suite(manifest_path: Path) -> EvalSuite:
                 verify_command=str(item.get("verify_command") or default_verify),
                 protected_globs=protected,
                 golden_test=str(item.get("golden_test") or ""),
+                split=split,
+                src_files=src_files,
             )
         )
     return EvalSuite(
