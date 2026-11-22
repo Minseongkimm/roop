@@ -308,6 +308,8 @@ def _messages_from_packet(packet: ContextPacket) -> Sequence[ChatMessage]:
     ]
     if packet.project_rules:
         user_parts.extend(["## Project rules", packet.project_rules])
+    if packet.project_context:
+        user_parts.extend(["## Project context", packet.project_context])
     if packet.feature_context:
         user_parts.extend(["## Feature context", packet.feature_context])
     if packet.code_slices:

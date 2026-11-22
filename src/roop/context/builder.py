@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -22,6 +23,8 @@ MAX_FEATURE_CHARS: int = 2000
 MAX_SLICE_CHARS: int = 2400
 MAX_SLICES: int = 3
 MAX_FEEDBACK_CHARS: int = 1200
+MAX_PROJECT_CONTEXT_CHARS: int = 6000
+MAX_PROJECT_FILE_CHARS: int = 2400
 RG_TIMEOUT_SECONDS: float = 5.0
 
 
@@ -43,6 +46,7 @@ class ContextPacket:
     system_prompt: str
     task: dict[str, Any]
     project_rules: str
+    project_context: str
     feature_context: str
     code_slices: list[CodeSlice] = field(default_factory=list)
     verifier_feedback: str = ""
@@ -72,6 +76,8 @@ class ContextPacket:
                 "```json\n" + json.dumps(self.task, ensure_ascii=False, indent=2) + "\n```",
                 "## Project rules",
                 self.project_rules or "_(none)_",
+                "## Project context",
+                self.project_context or "_(none)_",
                 "## Feature context",
                 self.feature_context or "_(none)_",
                 "## Code slices",
@@ -137,6 +143,10 @@ class ContextBuilder:
         project_rules, remaining, hit = _fit_text(project_rules, remaining)
         truncated = truncated or hit
 
+        project_context: str = _collect_project_context(self._project_root)
+        project_context, remaining, hit = _fit_text(project_context, remaining)
+        truncated = truncated or hit
+
         feature_context: str = _load_feature_context(
             self._agent_root, task.feature_ids
         )
@@ -169,6 +179,7 @@ class ContextBuilder:
             system_prompt=system_prompt,
             task=task_payload,
             project_rules=project_rules,
+            project_context=project_context,
             feature_context=feature_context,
             code_slices=slices,
             verifier_feedback=feedback,
@@ -250,6 +261,97 @@ class ContextBuilder:
             slices.append(CodeSlice(path=rel, content=content, tokens=tokens))
             budget_left -= tokens
         return slices, truncated
+
+
+
+def _collect_project_context(project_root: Path) -> str:
+    """Collect a bounded overview of project metadata and directory structure."""
+    preferred_names = {
+        "readme.md",
+        "readme",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "pipfile",
+        "package.json",
+        "tsconfig.json",
+        "jsconfig.json",
+        "cargo.toml",
+        "go.mod",
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts",
+        "composer.json",
+        "gemfile",
+        "mix.exs",
+        "dockerfile",
+        "docker-compose.yml",
+        "compose.yml",
+        "makefile",
+    }
+    excluded_dirs = {
+        ".git", ".agent", ".venv", "venv", "env", "__pycache__",
+        ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules",
+        "dist", "build", ".next", ".nuxt", "coverage", "vendor",
+    }
+
+    candidates: list[Path] = []
+    for path in project_root.iterdir():
+        if not path.is_file():
+            continue
+        name = path.name.lower()
+        if name in preferred_names or (
+            name.startswith("requirements") and name.endswith(".txt")
+        ):
+            candidates.append(path)
+
+    chunks: list[str] = []
+    total_chars = 0
+    for path in sorted(candidates, key=lambda item: item.name.lower()):
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace").strip()
+        except OSError:
+            continue
+        if not content:
+            continue
+        content = content[:MAX_PROJECT_FILE_CHARS]
+        chunk = f"### {path.name}\n{content}"
+        available = MAX_PROJECT_CONTEXT_CHARS - total_chars
+        if available <= 0:
+            break
+        if len(chunk) > available:
+            chunk = chunk[:available]
+        chunks.append(chunk)
+        total_chars += len(chunk)
+
+    tree_lines: list[str] = []
+    for current, dirs, files in os.walk(project_root):
+        current_path = Path(current)
+        depth = len(current_path.relative_to(project_root).parts)
+        dirs[:] = sorted(
+            name for name in dirs
+            if name not in excluded_dirs and not name.startswith(".")
+        )
+        if depth >= 2:
+            dirs[:] = []
+        for name in sorted(dirs):
+            relative = (current_path / name).relative_to(project_root)
+            tree_lines.append(f"{relative}/")
+        for name in sorted(files):
+            if name.startswith(".") or name.endswith((".pyc", ".db", ".sqlite3")):
+                continue
+            relative = (current_path / name).relative_to(project_root)
+            tree_lines.append(str(relative))
+        if len(tree_lines) >= 80:
+            tree_lines = tree_lines[:80]
+            break
+
+    if tree_lines and total_chars < MAX_PROJECT_CONTEXT_CHARS:
+        tree = "### Directory structure\n" + "\n".join(tree_lines)
+        available = MAX_PROJECT_CONTEXT_CHARS - total_chars
+        chunks.append(tree[:available])
+
+    return "\n\n".join(chunks)[:MAX_PROJECT_CONTEXT_CHARS]
 
 
 def _task_to_payload(task: Task) -> dict[str, Any]:
