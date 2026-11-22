@@ -134,7 +134,7 @@ def snapshot_tree(root: Path) -> dict[str, bytes]:
         if not path.is_file():
             continue
         relative: Path = path.relative_to(root)
-        if any(part in _IGNORED_PARTS for part in relative.parts):
+        if _is_ignored(relative):
             continue
         found[relative.as_posix()] = path.read_bytes()
     return found
@@ -211,3 +211,10 @@ def classify_failure(stdout: str, stderr: str) -> str:
 
 def _normalize(path: str) -> str:
     return path.replace("\\", "/").lstrip("./")
+
+
+def _is_ignored(relative: Path) -> bool:
+    """Engine bookkeeping is not a locked project path."""
+    if any(part in _IGNORED_PARTS for part in relative.parts):
+        return True
+    return relative.name.startswith(".aider")

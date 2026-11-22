@@ -168,6 +168,22 @@ def test_locked_path_change_is_rejected_and_restored(tmp_path: Path) -> None:
     assert not (tmp_path / "src" / "ok.py").exists()
 
 
+def test_aider_history_files_are_not_locked_paths(tmp_path: Path) -> None:
+    engine = _ScriptedEngine(
+        [{"src/ok.py": "ok\n", ".aider.chat.history.md": "history\n"}]
+    )
+    result = run_best_of(
+        engine,
+        prompt="write ok",
+        editable_files=("src/ok.py",),
+        test_command="python3 -c \"import pathlib; assert pathlib.Path('src/ok.py').read_text()=='ok\\n'\"",
+        workdir=tmp_path,
+        max_generations=1,
+    )
+    assert result.passed_at_1 is True
+    assert result.samples[0].reason != "locked path"
+
+
 def test_scorecard_separates_pass_at_1_and_pass_at_5() -> None:
     rows = aggregate_best_of(
         [
