@@ -56,6 +56,7 @@ class OllamaClient:
         body: dict[str, object] = {
             "model": selected_model,
             "messages": [{"role": message.role, "content": message.content} for message in messages],
+            "format": "json",
             "stream": False,
         }
         with httpx.Client(timeout=self._timeout_seconds) as client:
