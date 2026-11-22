@@ -1,15 +1,15 @@
 # Roop PROGRESS
 
-하드웨어: MacBook Air M3 16GB · 모델: `qwen2.5-coder:7b`  
-최종목표: 로컬이 초~중상 개발을 밤새 수행, 최상만 API.  
-엔진 동결 커밋: `2321d78`
+하드웨어: MacBook Air M3 16GB · 로컬: `qwen2.5-coder:7b` · API 기본: `gpt-4o-mini`
+최종목표: 로컬이 초~중상 개발을 밤새 수행, 최상만 API.
+엔진 동결 커밋: `87e0ead`
 
 | 단계 | 상태 |
 |------|------|
-| 0~2a 루프/관측성/eval20 정의 | 완료 |
-| 2b easy10 골든테스트 측정 | 재측정 대기 — 이전 0/10(`0afee23`)은 하네스 불일치로 무효 |
-| 2c~6 medium/모델표/API/병렬/맥미니 | 미착수 |
+| 0~2b easy10 | 완료 8/10(80%) @ `2321d78`. 실패 slugify, chunk-list |
+| 2c medium10 + API 폴백 | 1/10(10%) 로컬 @ `87e0ead`. API 키 없음, 호출 0, 비용 0. `api_skipped` 8 |
+| 3~6 모델표/병렬/맥미니 | 미착수 |
 
-동결: 프롬프트는 고정 골든테스트를 읽기 전용으로 포함하고 테스트 작성 지시는 제거. `tests/**` 쓰기는 재시도 없이 `테스트는 고정이다. src/ 만 수정하라`.  
-운영: `docs/MAP.md` · 과거: `docs/HISTORY.md` · 체크: `make check`  
+동결: 골든테스트는 읽기 전용. 로컬 검증 2회 실패 시 API. 키는 `ROOP_API_KEY`(없으면 `OPENAI_API_KEY`). 없으면 `api_skipped`.
+운영: `docs/MAP.md` · 과거: `docs/HISTORY.md` · 체크: `make check`
 다음 에이전트: MAP+PROGRESS만 읽고, 엔진 수정 전 측정 결과부터 판단.

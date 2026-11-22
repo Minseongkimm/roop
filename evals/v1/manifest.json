@@ -134,124 +134,134 @@
       "golden_test": "golden/tests/test_safe_div.py"
     },
     {
-      "id": "merge-dicts",
+      "id": "money-ledger",
       "difficulty": "medium",
-      "title": "Deep merge dicts",
-      "description": "Create src/merge.py with deep_merge(a,b) recursively merging dicts; b wins on conflicts; do not mutate inputs. Add tests/test_merge.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "nested merge works; inputs unchanged; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_merge.py -v",
+      "title": "Money parse plus ledger",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/money.py with parse_cents(text)->int and format_cents(cents)->str, and src/ledger.py with Ledger.deposit/withdraw/transfer/balance. parse_cents accepts optional $, at most 2 decimal places, and a leading minus (1 -> 100, 1.2 -> 120, $1.20 -> 120, .5 -> 50, -0.05 -> -5). Reject empty, 3+ decimals, trailing dot, thousands separators. format_cents(120)=='1.20', format_cents(-5)=='-0.05'. Ledger amounts must be > 0, account names non-empty, transfer to the same account is an error, and insufficient funds raises ValueError without changing any balance. Unknown accounts have balance 0.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "money parsing and ledger transfers match the fixed tests; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_money_ledger.py -v",
       "protected_globs": [
-        "tests/test_merge.py"
-      ]
+        "tests/test_money_ledger.py"
+      ],
+      "golden_test": "golden/tests/test_money_ledger.py"
     },
     {
-      "id": "lru-cache-mini",
+      "id": "csv-roundtrip",
       "difficulty": "medium",
-      "title": "Mini LRU cache",
-      "description": "Create src/lru.py with LRUCache(capacity) supporting get/put; capacity < 1 raises ValueError; eviction is least-recently-used. Add tests/test_lru.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "capacity eviction works; get updates recency; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_lru.py -v",
+      "title": "CSV read and write",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/csv_read.py with parse_csv(text)->list[dict] and src/csv_write.py with write_csv(rows, headers)->str. Header is the first record. Quote fields that contain comma, quote, or newline, and escape quotes by doubling. Empty input is []. Header-only is []. Duplicate headers and too many fields raise ValueError. A short row fills missing fields with ''. write_csv([], []) raises ValueError. write_csv([], ['name','note']) returns 'name,note\\n'. Roundtrip quoted commas and quotes.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "CSV parse/write roundtrip and edge cases pass unittest",
+      "verify_command": "python3 -m unittest discover -s tests -p test_csv_roundtrip.py -v",
       "protected_globs": [
-        "tests/test_lru.py"
-      ]
+        "tests/test_csv_roundtrip.py"
+      ],
+      "golden_test": "golden/tests/test_csv_roundtrip.py"
     },
     {
-      "id": "path-normalize",
+      "id": "template-filters",
       "difficulty": "medium",
-      "title": "Normalize posix paths",
-      "description": "Create src/pathnorm.py with normalize_path(path) resolving . and .. for posix-like paths without OS calls. Add tests/test_pathnorm.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "normalize_path('a/./b/../c')=='a/c'; absolute and relative cases covered",
-      "verify_command": "python3 -m unittest discover -s tests -p test_pathnorm.py -v",
+      "title": "Template tags and filters",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/filters.py with apply_filter(value, name, arg='') supporting upper, lower, and default (empty value returns arg). Unknown filters raise ValueError. Create src/template.py with render(template, values) replacing {{ name }}, {{ name|filter }}, and {{ name|filter:arg }}. Whitespace inside braces is allowed. Missing names raise KeyError unless the filter is default. Unclosed '{{' raises ValueError. Text outside tags is unchanged.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "filters and template rendering match the fixed tests",
+      "verify_command": "python3 -m unittest discover -s tests -p test_template_filters.py -v",
       "protected_globs": [
-        "tests/test_pathnorm.py"
-      ]
+        "tests/test_template_filters.py"
+      ],
+      "golden_test": "golden/tests/test_template_filters.py"
     },
     {
-      "id": "retry-helper",
+      "id": "retry-backoff",
       "difficulty": "medium",
-      "title": "Retry helper",
-      "description": "Create src/retry.py with retry(fn, retries, exceptions=(Exception,)) calling fn until success or retries exhausted then re-raise. retries < 0 raises ValueError. Add tests/test_retry.py using a callable that fails then succeeds.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "retries then succeeds; exhausted re-raises; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_retry.py -v",
+      "title": "Retry with backoff delays",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/backoff.py with backoff_ms(attempt, base_ms=100)->int where attempt is 1-based and the result is base_ms * 2**(attempt-1). attempt < 1 or base_ms < 0 raises ValueError. Create src/retry.py with retry(fn, retries, exceptions=(Exception,), sleep=None). retries is the number of extra attempts after the first call. retries < 0 raises ValueError. On a matching exception, call sleep(backoff_ms(n)) before each retry and re-raise the last error when retries are exhausted. Do not sleep after the final failure. Exceptions outside the tuple propagate immediately with no sleep.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "backoff sequence and retry/sleep behavior pass unittest",
+      "verify_command": "python3 -m unittest discover -s tests -p test_retry_backoff.py -v",
       "protected_globs": [
-        "tests/test_retry.py"
-      ]
+        "tests/test_retry_backoff.py"
+      ],
+      "golden_test": "golden/tests/test_retry_backoff.py"
     },
     {
-      "id": "ini-section",
+      "id": "ini-roundtrip",
       "difficulty": "medium",
-      "title": "Parse INI-like sections",
-      "description": "Create src/ini_mini.py with parse_sections(text) -> dict[str, dict[str,str]] for [section] and key=value lines. Add tests/test_ini_mini.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "multiple sections parse; comments ignored; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_ini_mini.py -v",
+      "title": "INI parse and dump",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/ini_parse.py with parse_ini(text)->dict[str, dict[str,str]] and src/ini_dump.py with dump_ini(sections)->str. Blank lines and full-line # or ; comments are ignored. Keys before any section go in section ''. Duplicate keys: last wins. A line that is not a section or key=value raises ValueError. dump_ini writes the '' section keys first with no header, then other sections sorted by name, keys sorted, and a trailing newline. dump_ini({})==''. Roundtrip simple values.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "INI comments, duplicates, and dump/parse roundtrip pass unittest",
+      "verify_command": "python3 -m unittest discover -s tests -p test_ini_roundtrip.py -v",
       "protected_globs": [
-        "tests/test_ini_mini.py"
-      ]
+        "tests/test_ini_roundtrip.py"
+      ],
+      "golden_test": "golden/tests/test_ini_roundtrip.py"
     },
     {
-      "id": "bounded-queue",
+      "id": "bounded-batch",
       "difficulty": "medium",
-      "title": "Bounded queue",
-      "description": "Create src/bqueue.py with BoundedQueue(maxsize) push/pop/peek/size/is_full. push when full raises OverflowError; pop empty IndexError. Add tests/test_bqueue.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "FIFO + bounds enforced; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_bqueue.py -v",
+      "title": "Bounded queue and drain",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/bqueue.py with BoundedQueue(maxsize) offering push, push_many, pop, peek, size, is_full, is_empty. maxsize < 1 raises ValueError. push on a full queue raises OverflowError. pop/peek on empty raises IndexError. push_many is atomic: if the items do not fit, raise OverflowError and leave the queue unchanged. FIFO. Create src/batch.py with drain(queue, limit) popping up to limit items, or fewer if the queue empties. limit < 1 raises ValueError. Draining an empty queue returns [].",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "queue bounds, atomic push_many, and drain pass unittest",
+      "verify_command": "python3 -m unittest discover -s tests -p test_bounded_batch.py -v",
       "protected_globs": [
-        "tests/test_bqueue.py"
-      ]
+        "tests/test_bounded_batch.py"
+      ],
+      "golden_test": "golden/tests/test_bounded_batch.py"
     },
     {
-      "id": "tokenize-area",
+      "id": "interval-coverage",
       "difficulty": "medium",
-      "title": "Shoelace polygon area",
-      "description": "Create src/geometry.py with polygon_area(points) using shoelace formula; need >=3 points else ValueError. Add tests/test_geometry.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "unit square area 1; <3 points ValueError; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_geometry.py -v",
+      "title": "Merge intervals and coverage",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/intervals.py with merge_intervals(intervals)->list[list[int]]. Do not mutate the input. start > end raises ValueError. Sort and merge overlaps, including touching endpoints ([1,2] and [2,3] become [1,3]; [1,2] and [4,5] stay apart). Empty input returns []. Create src/coverage.py with covered_length(intervals)->int using the merged inclusive length (end-start+1) so [1,1] is 1 and overlaps are not double-counted.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "merged intervals and inclusive covered length pass unittest",
+      "verify_command": "python3 -m unittest discover -s tests -p test_interval_coverage.py -v",
       "protected_globs": [
-        "tests/test_geometry.py"
-      ]
+        "tests/test_interval_coverage.py"
+      ],
+      "golden_test": "golden/tests/test_interval_coverage.py"
     },
     {
-      "id": "tokenize-json-roundtrip",
+      "id": "config-defaults",
       "difficulty": "medium",
-      "title": "JSON config roundtrip",
-      "description": "Create src/config_io.py with save_config(path, data) and load_config(path) using json; create parent dirs; invalid json raises ValueError. Add tests/test_config_io.py using tempfile.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "roundtrip dict; bad json ValueError; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_config_io.py -v",
+      "title": "JSON config and nested defaults",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/config_io.py with save_config(path, data) and load_config(path). data must be a dict or save_config raises TypeError before writing. Create parent directories. load_config raises FileNotFoundError when missing, and ValueError for invalid JSON. Create src/defaults.py with apply_defaults(data, defaults)->dict. Both arguments must be dicts or raise TypeError. Nested dicts merge and data wins. Lists are replaced, not concatenated. Do not mutate inputs, and do not share nested objects with the result.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "config roundtrip and nested defaults pass unittest",
+      "verify_command": "python3 -m unittest discover -s tests -p test_config_defaults.py -v",
       "protected_globs": [
-        "tests/test_config_io.py"
-      ]
+        "tests/test_config_defaults.py"
+      ],
+      "golden_test": "golden/tests/test_config_defaults.py"
     },
     {
-      "id": "interval-merge",
+      "id": "graph-topo",
       "difficulty": "medium",
-      "title": "Merge intervals",
-      "description": "Create src/intervals.py with merge_intervals(intervals) merging overlapping [start,end] lists. Add tests/test_intervals.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "[[1,3],[2,6],[8,10]] -> [[1,6],[8,10]]; empty ok; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_intervals.py -v",
+      "title": "Graph and stable topological sort",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/graph.py with Graph.add_node, add_edge(source, target) meaning source before target, nodes()->sorted names, successors(name), predecessors(name). Empty names raise ValueError. add_edge creates missing nodes. Duplicate edges are ignored. successors/predecessors of an unknown node raise KeyError and return sorted names. Create src/topo.py with topo_sort(graph)->list[str]. Among ready nodes, always pick the lexicographically smallest. Include every node. A cycle, including a self-loop, raises ValueError. An empty graph returns [].",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "stable topo order and cycle detection pass unittest",
+      "verify_command": "python3 -m unittest discover -s tests -p test_graph_topo.py -v",
       "protected_globs": [
-        "tests/test_intervals.py"
-      ]
+        "tests/test_graph_topo.py"
+      ],
+      "golden_test": "golden/tests/test_graph_topo.py"
     },
     {
-      "id": "tokenize-tokenize-wait",
+      "id": "query-url",
       "difficulty": "medium",
-      "title": "Topological sort",
-      "description": "Create src/topo.py with topo_sort(nodes, edges) returning a valid topological order; cycle raises ValueError. edges are (u,v) meaning u before v. Add tests/test_topo.py.",
-      "allow_paths": "src/**,tests/**",
-      "acceptance_criteria": "valid order for DAG; cycle ValueError; unittest passes",
-      "verify_command": "python3 -m unittest discover -s tests -p test_topo.py -v",
+      "title": "Query strings and URL parts",
+      "description": "Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/query.py with parse_query(text)->dict[str,str] and build_query(data)->str. Strip one leading ?. '+' is a space and percent-decoding applies. Duplicate keys: last wins. A key with no '=' has value ''. An empty key raises ValueError. build_query sorts keys, percent-encodes with %20 for spaces, and returns '' for {}. Create src/url_parts.py with split_url(url)->dict with keys scheme, host, path, query. Strip and ignore fragments. 'https://ex.com:8080/a/b?x=1#top' splits into those four fields. A path starting with / has empty scheme and host. A missing scheme that is not an absolute path raises ValueError. Userinfo ('@' in the host) raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "query codec and URL split match the fixed tests",
+      "verify_command": "python3 -m unittest discover -s tests -p test_query_url.py -v",
       "protected_globs": [
-        "tests/test_topo.py"
-      ]
+        "tests/test_query_url.py"
+      ],
+      "golden_test": "golden/tests/test_query_url.py"
     }
   ]
 }
