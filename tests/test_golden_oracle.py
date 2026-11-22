@@ -19,14 +19,51 @@ REFERENCE_ROOT: Path = (
 )
 
 
-def test_easy_and_medium_oracles_score_ten_and_zero() -> None:
+ORIGINAL_PRACTICE: dict[str, frozenset[str]] = {
+    "easy": frozenset(
+        {
+            "math-mean-median",
+            "clamp-util",
+            "slugify",
+            "stack-class",
+            "parse-kv",
+            "is-palindrome",
+            "chunk-list",
+            "flatten-once",
+            "counter-top",
+            "safe-div",
+        }
+    ),
+    "medium": frozenset(
+        {
+            "money-ledger",
+            "csv-roundtrip",
+            "template-filters",
+            "retry-backoff",
+            "ini-roundtrip",
+            "bounded-batch",
+            "interval-coverage",
+            "config-defaults",
+            "graph-topo",
+            "query-url",
+        }
+    ),
+}
+
+
+def test_easy_and_medium_oracles_are_green_and_red() -> None:
     suite = load_suite(default_suite_path())
-    for difficulty in ("easy", "medium"):
+    for difficulty, originals in ORIGINAL_PRACTICE.items():
         tasks: list[EvalTask] = suite.by_difficulty(difficulty)
-        assert len(tasks) == 10
+        practice: list[EvalTask] = [item for item in tasks if item.split == "practice"]
+        heldout: list[EvalTask] = [item for item in tasks if item.split == "heldout"]
+        assert len(tasks) >= 30
+        assert len(practice) == len(heldout)
+        assert originals <= {item.id for item in practice}
+        assert originals.isdisjoint({item.id for item in heldout})
         reference_score, reference_failures = _score_tasks(suite.path.parent, tasks, empty=False)
         empty_score, empty_passes = _score_tasks(suite.path.parent, tasks, empty=True)
-        assert reference_score == 10, reference_failures
+        assert reference_score == len(tasks), reference_failures
         assert empty_score == 0, empty_passes
 
 

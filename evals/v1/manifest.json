@@ -14,7 +14,11 @@
       "protected_globs": [
         "tests/test_math_utils.py"
       ],
-      "golden_test": "golden/tests/test_math_utils.py"
+      "golden_test": "golden/tests/test_math_utils.py",
+      "split": "practice",
+      "src_files": [
+        "src/math_utils.py"
+      ]
     },
     {
       "id": "clamp-util",
@@ -27,7 +31,11 @@
       "protected_globs": [
         "tests/test_clamp.py"
       ],
-      "golden_test": "golden/tests/test_clamp.py"
+      "golden_test": "golden/tests/test_clamp.py",
+      "split": "practice",
+      "src_files": [
+        "src/clamp.py"
+      ]
     },
     {
       "id": "slugify",
@@ -40,7 +48,11 @@
       "protected_globs": [
         "tests/test_slugify.py"
       ],
-      "golden_test": "golden/tests/test_slugify.py"
+      "golden_test": "golden/tests/test_slugify.py",
+      "split": "practice",
+      "src_files": [
+        "src/slugify.py"
+      ]
     },
     {
       "id": "stack-class",
@@ -53,7 +65,11 @@
       "protected_globs": [
         "tests/test_stack.py"
       ],
-      "golden_test": "golden/tests/test_stack.py"
+      "golden_test": "golden/tests/test_stack.py",
+      "split": "practice",
+      "src_files": [
+        "src/stack.py"
+      ]
     },
     {
       "id": "parse-kv",
@@ -66,7 +82,11 @@
       "protected_globs": [
         "tests/test_kv.py"
       ],
-      "golden_test": "golden/tests/test_kv.py"
+      "golden_test": "golden/tests/test_kv.py",
+      "split": "practice",
+      "src_files": [
+        "src/kv.py"
+      ]
     },
     {
       "id": "is-palindrome",
@@ -79,7 +99,11 @@
       "protected_globs": [
         "tests/test_palindrome.py"
       ],
-      "golden_test": "golden/tests/test_palindrome.py"
+      "golden_test": "golden/tests/test_palindrome.py",
+      "split": "practice",
+      "src_files": [
+        "src/palindrome.py"
+      ]
     },
     {
       "id": "chunk-list",
@@ -92,7 +116,11 @@
       "protected_globs": [
         "tests/test_chunk.py"
       ],
-      "golden_test": "golden/tests/test_chunk.py"
+      "golden_test": "golden/tests/test_chunk.py",
+      "split": "practice",
+      "src_files": [
+        "src/chunk.py"
+      ]
     },
     {
       "id": "flatten-once",
@@ -105,7 +133,11 @@
       "protected_globs": [
         "tests/test_flatten.py"
       ],
-      "golden_test": "golden/tests/test_flatten.py"
+      "golden_test": "golden/tests/test_flatten.py",
+      "split": "practice",
+      "src_files": [
+        "src/flatten.py"
+      ]
     },
     {
       "id": "counter-top",
@@ -118,7 +150,11 @@
       "protected_globs": [
         "tests/test_counter_top.py"
       ],
-      "golden_test": "golden/tests/test_counter_top.py"
+      "golden_test": "golden/tests/test_counter_top.py",
+      "split": "practice",
+      "src_files": [
+        "src/counter_top.py"
+      ]
     },
     {
       "id": "safe-div",
@@ -131,7 +167,11 @@
       "protected_globs": [
         "tests/test_safe_div.py"
       ],
-      "golden_test": "golden/tests/test_safe_div.py"
+      "golden_test": "golden/tests/test_safe_div.py",
+      "split": "practice",
+      "src_files": [
+        "src/safe_div.py"
+      ]
     },
     {
       "id": "money-ledger",
@@ -144,7 +184,12 @@
       "protected_globs": [
         "tests/test_money_ledger.py"
       ],
-      "golden_test": "golden/tests/test_money_ledger.py"
+      "golden_test": "golden/tests/test_money_ledger.py",
+      "split": "practice",
+      "src_files": [
+        "src/ledger.py",
+        "src/money.py"
+      ]
     },
     {
       "id": "csv-roundtrip",
@@ -157,7 +202,12 @@
       "protected_globs": [
         "tests/test_csv_roundtrip.py"
       ],
-      "golden_test": "golden/tests/test_csv_roundtrip.py"
+      "golden_test": "golden/tests/test_csv_roundtrip.py",
+      "split": "practice",
+      "src_files": [
+        "src/csv_read.py",
+        "src/csv_write.py"
+      ]
     },
     {
       "id": "template-filters",
@@ -170,7 +220,12 @@
       "protected_globs": [
         "tests/test_template_filters.py"
       ],
-      "golden_test": "golden/tests/test_template_filters.py"
+      "golden_test": "golden/tests/test_template_filters.py",
+      "split": "practice",
+      "src_files": [
+        "src/filters.py",
+        "src/template.py"
+      ]
     },
     {
       "id": "retry-backoff",
@@ -183,7 +238,12 @@
       "protected_globs": [
         "tests/test_retry_backoff.py"
       ],
-      "golden_test": "golden/tests/test_retry_backoff.py"
+      "golden_test": "golden/tests/test_retry_backoff.py",
+      "split": "practice",
+      "src_files": [
+        "src/backoff.py",
+        "src/retry.py"
+      ]
     },
     {
       "id": "ini-roundtrip",
@@ -196,7 +256,12 @@
       "protected_globs": [
         "tests/test_ini_roundtrip.py"
       ],
-      "golden_test": "golden/tests/test_ini_roundtrip.py"
+      "golden_test": "golden/tests/test_ini_roundtrip.py",
+      "split": "practice",
+      "src_files": [
+        "src/ini_dump.py",
+        "src/ini_parse.py"
+      ]
     },
     {
       "id": "bounded-batch",
@@ -209,7 +274,12 @@
       "protected_globs": [
         "tests/test_bounded_batch.py"
       ],
-      "golden_test": "golden/tests/test_bounded_batch.py"
+      "golden_test": "golden/tests/test_bounded_batch.py",
+      "split": "practice",
+      "src_files": [
+        "src/batch.py",
+        "src/bqueue.py"
+      ]
     },
     {
       "id": "interval-coverage",
@@ -222,7 +292,12 @@
       "protected_globs": [
         "tests/test_interval_coverage.py"
       ],
-      "golden_test": "golden/tests/test_interval_coverage.py"
+      "golden_test": "golden/tests/test_interval_coverage.py",
+      "split": "practice",
+      "src_files": [
+        "src/coverage.py",
+        "src/intervals.py"
+      ]
     },
     {
       "id": "config-defaults",
@@ -235,7 +310,12 @@
       "protected_globs": [
         "tests/test_config_defaults.py"
       ],
-      "golden_test": "golden/tests/test_config_defaults.py"
+      "golden_test": "golden/tests/test_config_defaults.py",
+      "split": "practice",
+      "src_files": [
+        "src/config_io.py",
+        "src/defaults.py"
+      ]
     },
     {
       "id": "graph-topo",
@@ -248,7 +328,12 @@
       "protected_globs": [
         "tests/test_graph_topo.py"
       ],
-      "golden_test": "golden/tests/test_graph_topo.py"
+      "golden_test": "golden/tests/test_graph_topo.py",
+      "split": "practice",
+      "src_files": [
+        "src/graph.py",
+        "src/topo.py"
+      ]
     },
     {
       "id": "query-url",
@@ -261,7 +346,712 @@
       "protected_globs": [
         "tests/test_query_url.py"
       ],
-      "golden_test": "golden/tests/test_query_url.py"
+      "golden_test": "golden/tests/test_query_url.py",
+      "split": "practice",
+      "src_files": [
+        "src/query.py",
+        "src/url_parts.py"
+      ]
+    },
+    {
+      "id": "reverse-words",
+      "difficulty": "easy",
+      "split": "practice",
+      "title": "Reverse word order",
+      "description": "Implement only src/words.py. Do NOT create or modify tests. reverse_words(text) splits on any whitespace, reverses the word order, and joins with a single space. Leading and trailing whitespace is dropped. Empty text and whitespace-only text return ''.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "reverse_words('a  b')=='b a'; blank input is ''",
+      "verify_command": "python3 -m unittest discover -s tests -p test_reverse_words.py -v",
+      "protected_globs": [
+        "tests/test_reverse_words.py"
+      ],
+      "golden_test": "golden/tests/test_reverse_words.py",
+      "src_files": [
+        "src/words.py"
+      ]
+    },
+    {
+      "id": "unique-keep",
+      "difficulty": "easy",
+      "split": "practice",
+      "title": "Dedupe keeping the first item",
+      "description": "Implement only src/unique.py. Do NOT create or modify tests. unique_keep(items) returns a new list with the first occurrence of each item kept and later duplicates removed. Do not mutate the input. An empty list returns [].",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "unique_keep keeps first occurrence order and does not mutate",
+      "verify_command": "python3 -m unittest discover -s tests -p test_unique_keep.py -v",
+      "protected_globs": [
+        "tests/test_unique_keep.py"
+      ],
+      "golden_test": "golden/tests/test_unique_keep.py",
+      "src_files": [
+        "src/unique.py"
+      ]
+    },
+    {
+      "id": "title-case",
+      "difficulty": "easy",
+      "split": "practice",
+      "title": "Title-case words",
+      "description": "Implement only src/title_case.py. Do NOT create or modify tests. title_case(text) splits on whitespace. Each word's first character is uppercase and the rest is lowercase. Words are joined with a single space. Empty or whitespace-only text returns ''.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "title_case('hello WORLD')=='Hello World'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_title_case.py -v",
+      "protected_globs": [
+        "tests/test_title_case.py"
+      ],
+      "golden_test": "golden/tests/test_title_case.py",
+      "src_files": [
+        "src/title_case.py"
+      ]
+    },
+    {
+      "id": "bracket-balance",
+      "difficulty": "easy",
+      "split": "practice",
+      "title": "Balanced brackets",
+      "description": "Implement only src/brackets.py. Do NOT create or modify tests. is_balanced(text) returns True when (), [], and {} are balanced and properly nested. Other characters are ignored. An empty string is True. A closer without a matching opener, or a mismatch, is False.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "is_balanced('([a])') is True; is_balanced('([)]') is False",
+      "verify_command": "python3 -m unittest discover -s tests -p test_bracket_balance.py -v",
+      "protected_globs": [
+        "tests/test_bracket_balance.py"
+      ],
+      "golden_test": "golden/tests/test_bracket_balance.py",
+      "src_files": [
+        "src/brackets.py"
+      ]
+    },
+    {
+      "id": "digit-sum",
+      "difficulty": "easy",
+      "split": "practice",
+      "title": "Sum decimal digits",
+      "description": "Implement only src/digits.py. Do NOT create or modify tests. digit_sum(value) sums the decimal digits of a non-negative int. 0 returns 0. A negative number, a bool, or a non-int raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "digit_sum(405)==9; digit_sum(-1) raises ValueError",
+      "verify_command": "python3 -m unittest discover -s tests -p test_digit_sum.py -v",
+      "protected_globs": [
+        "tests/test_digit_sum.py"
+      ],
+      "golden_test": "golden/tests/test_digit_sum.py",
+      "src_files": [
+        "src/digits.py"
+      ]
+    },
+    {
+      "id": "wrap-text",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Wrap words into lines",
+      "description": "Implement only src/wrap.py. Do NOT create or modify tests. wrap_text(text, width) splits text on whitespace and packs words into lines of at most width characters, separated by one space. A word longer than width stays intact on its own line. width < 1 or a bool width raises ValueError. Empty or whitespace-only text returns []. Do not break a word.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "wrap_text('one two three', 7)==['one two', 'three']",
+      "verify_command": "python3 -m unittest discover -s tests -p test_wrap_text.py -v",
+      "protected_globs": [
+        "tests/test_wrap_text.py"
+      ],
+      "golden_test": "golden/tests/test_wrap_text.py",
+      "src_files": [
+        "src/wrap.py"
+      ]
+    },
+    {
+      "id": "parse-int-list",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Parse a comma-separated int list",
+      "description": "Implement only src/int_list.py. Do NOT create or modify tests. parse_int_list(text) parses a comma-separated list of integers. Surrounding spaces around items are ignored. '' and whitespace-only text return []. An empty slot, a decimal, a plus sign, or a non-integer raises ValueError. A leading minus is allowed.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "parse_int_list('1, 2, -3')==[1, 2, -3]; '1.5' raises ValueError",
+      "verify_command": "python3 -m unittest discover -s tests -p test_parse_int_list.py -v",
+      "protected_globs": [
+        "tests/test_parse_int_list.py"
+      ],
+      "golden_test": "golden/tests/test_parse_int_list.py",
+      "src_files": [
+        "src/int_list.py"
+      ]
+    },
+    {
+      "id": "rotate-left",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Rotate a list left",
+      "description": "Implement only src/rotate.py. Do NOT create or modify tests. rotate_left(items, steps) returns a new list rotated left by steps positions. Negative steps rotate right. steps is taken modulo the length. An empty list returns [] for any int steps. Do not mutate the input. A bool or non-int steps raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "rotate_left([1,2,3,4], 1)==[2,3,4,1]; input is unchanged",
+      "verify_command": "python3 -m unittest discover -s tests -p test_rotate_left.py -v",
+      "protected_globs": [
+        "tests/test_rotate_left.py"
+      ],
+      "golden_test": "golden/tests/test_rotate_left.py",
+      "src_files": [
+        "src/rotate.py"
+      ]
+    },
+    {
+      "id": "strip-prefix",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Strip one prefix",
+      "description": "Implement only src/prefix.py. Do NOT create or modify tests. strip_prefix(text, prefix) removes prefix once when text starts with it. Otherwise it returns text unchanged. An empty prefix returns text unchanged.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "strip_prefix('prefix-value', 'prefix-')=='value'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_strip_prefix.py -v",
+      "protected_globs": [
+        "tests/test_strip_prefix.py"
+      ],
+      "golden_test": "golden/tests/test_strip_prefix.py",
+      "src_files": [
+        "src/prefix.py"
+      ]
+    },
+    {
+      "id": "is-anagram",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Compare anagrams",
+      "description": "Implement only src/anagram.py. Do NOT create or modify tests. is_anagram(left, right) returns True when both strings contain the same letters and digits after ignoring case and non-alphanumeric characters. Two empty strings are anagrams. Order does not matter.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "is_anagram('Dormitory', 'dirty room') is True",
+      "verify_command": "python3 -m unittest discover -s tests -p test_is_anagram.py -v",
+      "protected_globs": [
+        "tests/test_is_anagram.py"
+      ],
+      "golden_test": "golden/tests/test_is_anagram.py",
+      "src_files": [
+        "src/anagram.py"
+      ]
+    },
+    {
+      "id": "running-max",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Running maximum",
+      "description": "Implement only src/running.py. Do NOT create or modify tests. running_max(items) returns a new list where each position is the maximum value seen so far, including that position. An empty list returns []. Do not mutate the input. Negative numbers are valid.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "running_max([1, 3, 2, 5])==[1, 3, 3, 5]",
+      "verify_command": "python3 -m unittest discover -s tests -p test_running_max.py -v",
+      "protected_globs": [
+        "tests/test_running_max.py"
+      ],
+      "golden_test": "golden/tests/test_running_max.py",
+      "src_files": [
+        "src/running.py"
+      ]
+    },
+    {
+      "id": "join-url-path",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Join URL path parts",
+      "description": "Implement only src/url_path.py. Do NOT create or modify tests. join_url_path(*parts) strips spaces and slashes from each part, skips empty parts, and joins the rest with one slash. If the first argument, after stripping spaces, starts with '/', the result starts with '/'. No parts, or only empty parts, returns ''.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "join_url_path('a', '/b/', 'c')=='a/b/c'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_join_url_path.py -v",
+      "protected_globs": [
+        "tests/test_join_url_path.py"
+      ],
+      "golden_test": "golden/tests/test_join_url_path.py",
+      "src_files": [
+        "src/url_path.py"
+      ]
+    },
+    {
+      "id": "mask-email",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Mask an email local part",
+      "description": "Implement only src/email_mask.py. Do NOT create or modify tests. mask_email(text) requires exactly one '@' and a non-empty local part and domain. Otherwise raise ValueError. Keep the first local character, replace every remaining local character with '*', and always emit at least one '*'. The domain is unchanged.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "mask_email('abcd@x.com')=='a***@x.com'; mask_email('a@x.com')=='a*@x.com'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_mask_email.py -v",
+      "protected_globs": [
+        "tests/test_mask_email.py"
+      ],
+      "golden_test": "golden/tests/test_mask_email.py",
+      "src_files": [
+        "src/email_mask.py"
+      ]
+    },
+    {
+      "id": "word-count",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Count alphanumeric words",
+      "description": "Implement only src/word_count.py. Do NOT create or modify tests. word_count(text) returns a dict of lowercase alphanumeric words ([A-Za-z0-9]+) to their counts. Punctuation and other characters are separators. Empty text returns {}.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "word_count('A a, b!')=={'a': 2, 'b': 1}",
+      "verify_command": "python3 -m unittest discover -s tests -p test_word_count.py -v",
+      "protected_globs": [
+        "tests/test_word_count.py"
+      ],
+      "golden_test": "golden/tests/test_word_count.py",
+      "src_files": [
+        "src/word_count.py"
+      ]
+    },
+    {
+      "id": "pad-left",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Pad a string on the left",
+      "description": "Implement only src/pad.py. Do NOT create or modify tests. pad_left(text, width, fill=' ') returns text when len(text) >= width. Otherwise it adds fill characters on the left until the length is width. width < 0 or a bool width raises ValueError. fill must be exactly one character, otherwise raise ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "pad_left('7', 3, '0')=='007'; longer text is unchanged",
+      "verify_command": "python3 -m unittest discover -s tests -p test_pad_left.py -v",
+      "protected_globs": [
+        "tests/test_pad_left.py"
+      ],
+      "golden_test": "golden/tests/test_pad_left.py",
+      "src_files": [
+        "src/pad.py"
+      ]
+    },
+    {
+      "id": "drop-none",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Drop None values",
+      "description": "Implement only src/drop_none.py. Do NOT create or modify tests. drop_none(items) returns a new list without None values. Keep 0, False, and ''. Do not mutate the input.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "drop_none([0, None, '', False])==[0, '', False]",
+      "verify_command": "python3 -m unittest discover -s tests -p test_drop_none.py -v",
+      "protected_globs": [
+        "tests/test_drop_none.py"
+      ],
+      "golden_test": "golden/tests/test_drop_none.py",
+      "src_files": [
+        "src/drop_none.py"
+      ]
+    },
+    {
+      "id": "parse-bool",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Parse a boolean token",
+      "description": "Implement only src/bools.py. Do NOT create or modify tests. parse_bool(text) strips text and compares it case-insensitively. true, yes, and 1 are True. false, no, and 0 are False. Anything else, including empty text, raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "parse_bool(' YES ') is True; parse_bool('maybe') raises ValueError",
+      "verify_command": "python3 -m unittest discover -s tests -p test_parse_bool.py -v",
+      "protected_globs": [
+        "tests/test_parse_bool.py"
+      ],
+      "golden_test": "golden/tests/test_parse_bool.py",
+      "src_files": [
+        "src/bools.py"
+      ]
+    },
+    {
+      "id": "zip-strict",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Zip lists of equal length",
+      "description": "Implement only src/zip_strict.py. Do NOT create or modify tests. zip_strict(left, right) returns a list of pairs. Different lengths raise ValueError and do not partially zip. Two empty lists return []. Do not mutate either input.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "zip_strict([1, 2], ['a', 'b'])==[(1, 'a'), (2, 'b')]",
+      "verify_command": "python3 -m unittest discover -s tests -p test_zip_strict.py -v",
+      "protected_globs": [
+        "tests/test_zip_strict.py"
+      ],
+      "golden_test": "golden/tests/test_zip_strict.py",
+      "src_files": [
+        "src/zip_strict.py"
+      ]
+    },
+    {
+      "id": "most-frequent",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Most frequent item",
+      "description": "Implement only src/frequent.py. Do NOT create or modify tests. most_frequent(items) returns the item with the highest count. Ties go to the item whose first occurrence is earlier. An empty list raises ValueError. Do not mutate the input.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "most_frequent(['b', 'a', 'b', 'a'])=='b'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_most_frequent.py -v",
+      "protected_globs": [
+        "tests/test_most_frequent.py"
+      ],
+      "golden_test": "golden/tests/test_most_frequent.py",
+      "src_files": [
+        "src/frequent.py"
+      ]
+    },
+    {
+      "id": "collapse-spaces",
+      "difficulty": "easy",
+      "split": "heldout",
+      "title": "Collapse whitespace",
+      "description": "Implement only src/spaces.py. Do NOT create or modify tests. collapse_spaces(text) replaces each run of whitespace with a single space and strips both ends. Empty or whitespace-only text returns ''.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "collapse_spaces('  a\\t\\nb ')=='a b'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_collapse_spaces.py -v",
+      "protected_globs": [
+        "tests/test_collapse_spaces.py"
+      ],
+      "golden_test": "golden/tests/test_collapse_spaces.py",
+      "src_files": [
+        "src/spaces.py"
+      ]
+    },
+    {
+      "id": "fraction-add",
+      "difficulty": "medium",
+      "split": "practice",
+      "title": "Reduce fractions and add them",
+      "description": "Implement only src/fraction.py and src/frac_math.py. Do NOT create or modify tests. reduce_fraction(numerator, denominator) returns a reduced (numerator, denominator). The denominator is always positive. The sign lives on the numerator. 0/n is (0, 1). A zero denominator, a bool, or a non-int raises ValueError. add_fractions(left, right) adds two (numerator, denominator) pairs and returns the reduced sum. Invalid parts raise ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "reduce_fraction(2, -4)==(-1, 2); add_fractions((1, 2), (1, 3))==(5, 6)",
+      "verify_command": "python3 -m unittest discover -s tests -p test_fraction_add.py -v",
+      "protected_globs": [
+        "tests/test_fraction_add.py"
+      ],
+      "golden_test": "golden/tests/test_fraction_add.py",
+      "src_files": [
+        "src/fraction.py",
+        "src/frac_math.py"
+      ]
+    },
+    {
+      "id": "path-join",
+      "difficulty": "medium",
+      "split": "practice",
+      "title": "Clean path segments and join them",
+      "description": "Implement only src/path_clean.py and src/path_join.py. Do NOT create or modify tests. clean_segment(segment) strips spaces. An empty result, '.', '..', or a value containing '/' or '\\\\' raises ValueError. Otherwise it returns the stripped segment. join_path(segments) cleans every segment and joins them with '/'. An empty list raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "join_path([' a ', 'b'])=='a/b'; join_path(['..']) raises ValueError",
+      "verify_command": "python3 -m unittest discover -s tests -p test_path_join.py -v",
+      "protected_globs": [
+        "tests/test_path_join.py"
+      ],
+      "golden_test": "golden/tests/test_path_join.py",
+      "src_files": [
+        "src/path_clean.py",
+        "src/path_join.py"
+      ]
+    },
+    {
+      "id": "token-scan",
+      "difficulty": "medium",
+      "split": "practice",
+      "title": "Scan alphabetic words",
+      "description": "Implement only src/token.py and src/scanner.py. Do NOT create or modify tests. is_word_token(text) is True only when text is non-empty and every character is a letter. scan_words(text) extracts maximal alphabetic runs, lowercases them, and returns them in order. Digits and punctuation are separators, not part of a word. Empty text returns [].",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "scan_words('Hello, World 2nd')==['hello', 'world', 'nd']",
+      "verify_command": "python3 -m unittest discover -s tests -p test_token_scan.py -v",
+      "protected_globs": [
+        "tests/test_token_scan.py"
+      ],
+      "golden_test": "golden/tests/test_token_scan.py",
+      "src_files": [
+        "src/token.py",
+        "src/scanner.py"
+      ]
+    },
+    {
+      "id": "ring-window",
+      "difficulty": "medium",
+      "split": "practice",
+      "title": "Ring buffer and last-n window",
+      "description": "Implement only src/ring.py and src/window.py. Do NOT create or modify tests. Ring(capacity) stores items in arrival order. capacity < 1 or a bool raises ValueError. push drops the oldest item when size would exceed capacity. items() returns a new list from oldest to newest. size() returns the count. last_n(ring, n) returns the last n items from items(), or all of them if fewer exist. n < 1 or a bool n raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "Ring(2) keeps the two newest items; last_n reads the newest side",
+      "verify_command": "python3 -m unittest discover -s tests -p test_ring_window.py -v",
+      "protected_globs": [
+        "tests/test_ring_window.py"
+      ],
+      "golden_test": "golden/tests/test_ring_window.py",
+      "src_files": [
+        "src/ring.py",
+        "src/window.py"
+      ]
+    },
+    {
+      "id": "duration-clock",
+      "difficulty": "medium",
+      "split": "practice",
+      "title": "Parse a duration and add it to a clock",
+      "description": "Implement only src/duration.py and src/clock.py. Do NOT create or modify tests. parse_duration(text) returns whole minutes. A bare non-negative integer is minutes. Otherwise the text is a concatenation of <digits>h and <digits>m pieces, lowercase only. Hours convert as 60 minutes. Empty text, a trailing number, an unknown unit, or a minus raises ValueError. add_minutes(hhmm, duration) parses a 24-hour HH:MM clock, adds parse_duration(duration), wraps inside one day, and returns HH:MM. Hour must be 00-23 and minute 00-59.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "parse_duration('1h30m')==90; add_minutes('23:30', '1h')=='00:30'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_duration_clock.py -v",
+      "protected_globs": [
+        "tests/test_duration_clock.py"
+      ],
+      "golden_test": "golden/tests/test_duration_clock.py",
+      "src_files": [
+        "src/duration.py",
+        "src/clock.py"
+      ]
+    },
+    {
+      "id": "semver-cmp",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse and compare semantic versions",
+      "description": "Implement only src/semver.py and src/version_cmp.py. Do NOT create or modify tests. parse_semver(text) requires exactly three dot-separated non-negative integers and returns (major, minor, patch). Each part must be digits. Anything else raises ValueError. compare_semver(left, right) returns -1, 0, or 1 using parse_semver.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "compare_semver('1.0.0', '1.0.1')==-1",
+      "verify_command": "python3 -m unittest discover -s tests -p test_semver_cmp.py -v",
+      "protected_globs": [
+        "tests/test_semver_cmp.py"
+      ],
+      "golden_test": "golden/tests/test_semver_cmp.py",
+      "src_files": [
+        "src/semver.py",
+        "src/version_cmp.py"
+      ]
+    },
+    {
+      "id": "point-manhattan",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Points and Manhattan distance",
+      "description": "Implement only src/point.py and src/distance.py. Do NOT create or modify tests. Point(x, y) stores two ints. A bool or non-int coordinate raises TypeError. manhattan(left, right) returns abs(x2-x1)+abs(y2-y1). A non-Point argument raises TypeError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "manhattan(Point(0, 0), Point(3, -1))==4",
+      "verify_command": "python3 -m unittest discover -s tests -p test_point_manhattan.py -v",
+      "protected_globs": [
+        "tests/test_point_manhattan.py"
+      ],
+      "golden_test": "golden/tests/test_point_manhattan.py",
+      "src_files": [
+        "src/point.py",
+        "src/distance.py"
+      ]
+    },
+    {
+      "id": "roman-pair",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse and format Roman numerals",
+      "description": "Implement only src/roman_parse.py and src/roman_format.py. Do NOT create or modify tests. format_roman(value) converts an int from 1 to 3999 into a canonical uppercase Roman numeral. Use the standard subtractive pairs IV, IX, XL, XC, CD, and CM. Out of range, bool, or non-int raises ValueError. parse_roman(text) accepts only the canonical uppercase form and returns the int. Empty text, lowercase, or a non-canonical form such as IIII raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "format_roman(1994)=='MCMXCIV'; parse_roman('IIII') raises ValueError",
+      "verify_command": "python3 -m unittest discover -s tests -p test_roman_pair.py -v",
+      "protected_globs": [
+        "tests/test_roman_pair.py"
+      ],
+      "golden_test": "golden/tests/test_roman_pair.py",
+      "src_files": [
+        "src/roman_format.py",
+        "src/roman_parse.py"
+      ]
+    },
+    {
+      "id": "matrix-basic",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Transpose and multiply matrices",
+      "description": "Implement only src/matrix.py and src/matmul.py. Do NOT create or modify tests. transpose(rows) returns a new matrix. An empty list returns []. A ragged matrix raises ValueError. Do not mutate the input. multiply(left, right) returns the matrix product. Empty or ragged matrices, or incompatible shapes, raise ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "transpose([[1, 2], [3, 4]])==[[1, 3], [2, 4]]",
+      "verify_command": "python3 -m unittest discover -s tests -p test_matrix_basic.py -v",
+      "protected_globs": [
+        "tests/test_matrix_basic.py"
+      ],
+      "golden_test": "golden/tests/test_matrix_basic.py",
+      "src_files": [
+        "src/matrix.py",
+        "src/matmul.py"
+      ]
+    },
+    {
+      "id": "html-attr",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Escape text and render an attribute",
+      "description": "Implement only src/html_escape.py and src/html_attr.py. Do NOT create or modify tests. escape_text(text) replaces & < > \" and ' with &amp; &lt; &gt; &quot; and &#39;. Replace & first so escapes are not double-encoded. render_attr(name, value) returns name=\"escaped value\". name must match [A-Za-z][A-Za-z0-9_-]* or render_attr raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "render_attr('title', 'a<b &')=='title=\"a&lt;b &amp;\"'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_html_attr.py -v",
+      "protected_globs": [
+        "tests/test_html_attr.py"
+      ],
+      "golden_test": "golden/tests/test_html_attr.py",
+      "src_files": [
+        "src/html_escape.py",
+        "src/html_attr.py"
+      ]
+    },
+    {
+      "id": "count-merge",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse counts and merge them",
+      "description": "Implement only src/counts.py and src/count_merge.py. Do NOT create or modify tests. parse_counts(text) parses comma-separated key:count pairs into a dict. Empty or whitespace-only text returns {}. Duplicate keys in one string are summed. Keys are stripped. Counts are non-negative integers. A missing colon, an empty key, or a negative count raises ValueError. merge_counts(parts) parses each string and sums counts across parts.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "parse_counts('a:1,a:2')=={'a': 3}; merge_counts(['a:1', 'a:4,b:1'])=={'a': 5, 'b': 1}",
+      "verify_command": "python3 -m unittest discover -s tests -p test_count_merge.py -v",
+      "protected_globs": [
+        "tests/test_count_merge.py"
+      ],
+      "golden_test": "golden/tests/test_count_merge.py",
+      "src_files": [
+        "src/counts.py",
+        "src/count_merge.py"
+      ]
+    },
+    {
+      "id": "email-domain",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Split emails and compare domains",
+      "description": "Implement only src/email_split.py and src/email_domain.py. Do NOT create or modify tests. split_email(text) requires exactly one '@', a non-empty local part, and a domain that contains a dot and does not start or end with a dot. Both parts are stripped and lowercased. Otherwise raise ValueError. same_domain(left, right) compares the domains.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "split_email('A@B.COM')==('a', 'b.com'); same_domain is domain-only",
+      "verify_command": "python3 -m unittest discover -s tests -p test_email_domain.py -v",
+      "protected_globs": [
+        "tests/test_email_domain.py"
+      ],
+      "golden_test": "golden/tests/test_email_domain.py",
+      "src_files": [
+        "src/email_split.py",
+        "src/email_domain.py"
+      ]
+    },
+    {
+      "id": "span-contains",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse an inclusive span and test a point",
+      "description": "Implement only src/span.py and src/span_query.py. Do NOT create or modify tests. parse_span(text) parses 'start-end' or a single integer into an inclusive pair. Both ends are non-negative integers. start > end raises ValueError. A non-integer raises ValueError. span_contains(span, point) uses that pair. A bool or non-int point raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "parse_span('1-5')==(1, 5); span_contains('1-5', 5) is True",
+      "verify_command": "python3 -m unittest discover -s tests -p test_span_contains.py -v",
+      "protected_globs": [
+        "tests/test_span_contains.py"
+      ],
+      "golden_test": "golden/tests/test_span_contains.py",
+      "src_files": [
+        "src/span.py",
+        "src/span_query.py"
+      ]
+    },
+    {
+      "id": "line-stats",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Split lines and count non-empty ones",
+      "description": "Implement only src/lines.py and src/line_stats.py. Do NOT create or modify tests. split_lines(text) returns lines separated by '\\n'. A single trailing newline does not create an extra empty line. Empty text returns []. Internal empty lines are kept. count_nonempty(text) counts lines whose stripped text is non-empty.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "split_lines('a\\n\\nb\\n')==['a', '', 'b']; count_nonempty of that is 2",
+      "verify_command": "python3 -m unittest discover -s tests -p test_line_stats.py -v",
+      "protected_globs": [
+        "tests/test_line_stats.py"
+      ],
+      "golden_test": "golden/tests/test_line_stats.py",
+      "src_files": [
+        "src/lines.py",
+        "src/line_stats.py"
+      ]
+    },
+    {
+      "id": "ratio-math",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse ratios and multiply them",
+      "description": "Implement only src/ratio.py and src/ratio_math.py. Do NOT create or modify tests. parse_ratio(text) parses 'n/d' or a bare integer (denominator 1) into a reduced pair. The denominator is always positive and the sign is on the numerator. 0/n is (0, 1). A zero denominator or a non-integer raises ValueError. multiply_ratios(left, right) multiplies two ratio strings and returns the reduced pair.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "parse_ratio('2/4')==(1, 2); multiply_ratios('1/2', '2/3')==(1, 3)",
+      "verify_command": "python3 -m unittest discover -s tests -p test_ratio_math.py -v",
+      "protected_globs": [
+        "tests/test_ratio_math.py"
+      ],
+      "golden_test": "golden/tests/test_ratio_math.py",
+      "src_files": [
+        "src/ratio.py",
+        "src/ratio_math.py"
+      ]
+    },
+    {
+      "id": "temp-convert",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse a temperature and convert it",
+      "description": "Implement only src/temp_parse.py and src/temp_convert.py. Do NOT create or modify tests. parse_temp(text) strips spaces and reads a number plus a final C or F, case-insensitive. It returns (value, 'C' or 'F'). A missing unit or a bad number raises ValueError. convert_temp(text, unit) converts to the target unit. C = (F-32)*5/9 and F = C*9/5+32. The result is one decimal digit plus the upper-case unit, such as '0.0C'. An unknown target unit raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "convert_temp('32F', 'C')=='0.0C'; convert_temp('100C', 'F')=='212.0F'",
+      "verify_command": "python3 -m unittest discover -s tests -p test_temp_convert.py -v",
+      "protected_globs": [
+        "tests/test_temp_convert.py"
+      ],
+      "golden_test": "golden/tests/test_temp_convert.py",
+      "src_files": [
+        "src/temp_parse.py",
+        "src/temp_convert.py"
+      ]
+    },
+    {
+      "id": "bbox-area",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse points and measure a bounding box",
+      "description": "Implement only src/bbox.py and src/bbox_area.py. Do NOT create or modify tests. parse_point(text) parses 'x,y' into a pair of ints. Spaces around the numbers are allowed. A non-integer raises ValueError. area(corners) parses at least one point and returns (max_x-min_x)*(max_y-min_y). An empty list raises ValueError. A single point has area 0.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "area(['0,0', '2,3'])==6",
+      "verify_command": "python3 -m unittest discover -s tests -p test_bbox_area.py -v",
+      "protected_globs": [
+        "tests/test_bbox_area.py"
+      ],
+      "golden_test": "golden/tests/test_bbox_area.py",
+      "src_files": [
+        "src/bbox.py",
+        "src/bbox_area.py"
+      ]
+    },
+    {
+      "id": "level-filter",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Parse log levels and filter lines",
+      "description": "Implement only src/level.py and src/level_filter.py. Do NOT create or modify tests. parse_level(name) strips and lowercases debug=10, info=20, warn=30, error=40. An unknown name raises ValueError. filter_lines(lines, minimum) keeps lines whose level is greater than or equal to minimum. Each line is 'LEVEL message' with a non-empty message. A bad line raises ValueError. Do not mutate the input list. Return the original line strings.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "filter_lines(['info a', 'error b'], 'warn')==['error b']",
+      "verify_command": "python3 -m unittest discover -s tests -p test_level_filter.py -v",
+      "protected_globs": [
+        "tests/test_level_filter.py"
+      ],
+      "golden_test": "golden/tests/test_level_filter.py",
+      "src_files": [
+        "src/level.py",
+        "src/level_filter.py"
+      ]
+    },
+    {
+      "id": "prefix-table",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Normalize keys and store them",
+      "description": "Implement only src/prefix_norm.py and src/prefix_table.py. Do NOT create or modify tests. normalize_key(text) strips, lowercases, and collapses internal whitespace to one space. An empty result raises ValueError. PrefixTable.add(key, value) stores the normalized key. A later add replaces the value. get(key) returns it or raises KeyError when missing.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "normalize_key('  A   B ')=='a b'; later add wins",
+      "verify_command": "python3 -m unittest discover -s tests -p test_prefix_table.py -v",
+      "protected_globs": [
+        "tests/test_prefix_table.py"
+      ],
+      "golden_test": "golden/tests/test_prefix_table.py",
+      "src_files": [
+        "src/prefix_norm.py",
+        "src/prefix_table.py"
+      ]
+    },
+    {
+      "id": "inventory-sku",
+      "difficulty": "medium",
+      "split": "heldout",
+      "title": "Normalize SKUs and track inventory",
+      "description": "Implement only src/sku.py and src/inventory.py. Do NOT create or modify tests. normalize_sku(text) strips and uppercases. The result must match [A-Z0-9]+(?:-[A-Z0-9]+)* or it raises ValueError. Inventory.add(sku, qty) adds a positive int quantity. remove(sku, qty) subtracts a positive int and raises ValueError, without changing the count, when the stock is insufficient. count(sku) returns 0 for an unknown SKU. A bool or non-positive quantity raises ValueError.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "normalize_sku(' ab-12 ')=='AB-12'; remove does not mutate on failure",
+      "verify_command": "python3 -m unittest discover -s tests -p test_inventory_sku.py -v",
+      "protected_globs": [
+        "tests/test_inventory_sku.py"
+      ],
+      "golden_test": "golden/tests/test_inventory_sku.py",
+      "src_files": [
+        "src/sku.py",
+        "src/inventory.py"
+      ]
     }
   ]
 }

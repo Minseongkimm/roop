@@ -33,13 +33,18 @@ class OllamaClient:
         default_model: str = DEFAULT_MODEL,
         *,
         num_ctx: int = DEFAULT_NUM_CTX,
+        temperature: float = 0.1,
         sleeper: Callable[[float], None] | None = None,
     ) -> None:
         self._base_url: str = base_url.rstrip("/")
         self._timeout_seconds: float = timeout_seconds
         self._default_model: str = default_model
         self._num_ctx: int = num_ctx
+        self._temperature: float = temperature
         self._sleeper: Callable[[float], None] = sleeper or time.sleep
+
+    def set_temperature(self, temperature: float) -> None:
+        self._temperature = temperature
 
     def is_available(self) -> bool:
         try:
@@ -73,7 +78,7 @@ class OllamaClient:
             "messages": [{"role": message.role, "content": message.content} for message in messages],
             "format": "json",
             "options": {
-                "temperature": 0.1,
+                "temperature": self._temperature,
                 "repeat_penalty": 1.15,
                 "repeat_last_n": 128,
                 "num_predict": 8192,

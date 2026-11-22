@@ -34,6 +34,20 @@ def test_chat_requests_json_format():
     assert result.done is True
 
 
+def test_set_temperature_is_sent_to_ollama() -> None:
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    response = MagicMock()
+    response.json.return_value = {"message": {"content": "{}"}, "done": True}
+    mock_client.post.return_value = response
+    with patch("roop.adapters.ollama.httpx.Client", return_value=mock_client):
+        client = OllamaClient()
+        client.set_temperature(0.4)
+        client.chat([ChatMessage(role="user", content="hi")])
+    request_body = mock_client.post.call_args.kwargs["json"]
+    assert request_body["options"]["temperature"] == 0.4
+
+
 def test_transient_500_retries_then_succeeds_without_surfacing() -> None:
     sleeps: list[float] = []
     mock_client = MagicMock()

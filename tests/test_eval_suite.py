@@ -40,18 +40,26 @@ def test_enqueue_suite(tmp_path: Path) -> None:
 
 def test_medium_tasks_are_fixed_goldens() -> None:
     suite = load_suite(default_suite_path())
-    medium = suite.by_difficulty("medium")
-    assert len(medium) == 10
-    for item in medium:
-        assert item.verify_command
-        assert item.golden_test
-        assert item.allow_paths == "src/**"
-        assert "tests/**" not in item.allow_paths
-        golden = suite.path.parent / item.golden_test
-        assert golden.is_file()
-        text = golden.read_text(encoding="utf-8")
-        assert "unittest" in text
-        assert item.verify_command.endswith(golden.name + " -v") or golden.name in item.verify_command
+    for difficulty in ("easy", "medium"):
+        tasks = suite.by_difficulty(difficulty)
+        assert len(tasks) >= 30
+        assert len(suite.by_split("practice", difficulty)) == len(
+            suite.by_split("heldout", difficulty)
+        )
+        for item in tasks:
+            assert item.split in {"practice", "heldout"}
+            assert item.verify_command
+            assert item.golden_test
+            assert item.src_files
+            assert item.allow_paths == "src/**"
+            assert "tests/**" not in item.allow_paths
+            golden = suite.path.parent / item.golden_test
+            assert golden.is_file()
+            text = golden.read_text(encoding="utf-8")
+            assert "unittest" in text
+            assert golden.name in item.verify_command
+            for relative in item.src_files:
+                assert (suite.path.parent / "reference" / item.id / relative).is_file()
 
 
 def test_enqueue_rejects_noop_verify(tmp_path: Path) -> None:
