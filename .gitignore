@@ -1,9 +1,14 @@
 .venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
 .pytest_cache/
 .mypy_cache/
-dist/
-*.egg-info/
-.push-test
+.ruff_cache/
+*.sqlite3
+.DS_Store
 .agent/
+*.egg

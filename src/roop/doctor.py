@@ -1,3 +1,5 @@
+"""Environment doctor checks for Phase 0."""
+
 from __future__ import annotations
 
 import shutil
@@ -5,54 +7,78 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from roop.adapters.ollama import OllamaAdapter
+from roop.adapters.ollama import OllamaClient
 
 
-@dataclass(frozen=True)
-class CheckResult:
+@dataclass(frozen=True, slots=True)
+class DoctorCheck:
+    """Single doctor check result."""
+
     name: str
-    ok: bool
+    is_ok: bool
     detail: str
 
 
-def run_doctor(project_path: Path | None = None) -> list[CheckResult]:
-    results: list[CheckResult] = []
-    git_path: str | None = shutil.which("git")
-    results.append(
-        CheckResult("git", git_path is not None, git_path or "not found")
-    )
-    rg_path: str | None = shutil.which("rg")
-    results.append(
-        CheckResult("ripgrep", rg_path is not None, rg_path or "not found (optional)")
-    )
-    adapter: OllamaAdapter = OllamaAdapter()
-    ollama_ok: bool = adapter.is_reachable()
-    results.append(
-        CheckResult(
-            "ollama",
-            ollama_ok,
-            f"{adapter.base_url} reachable" if ollama_ok else f"{adapter.base_url} unreachable (soft-fail)",
+def execute_doctor(
+    *,
+    target_path: Path | None = None,
+    ollama_client: OllamaClient | None = None,
+) -> list[DoctorCheck]:
+    client: OllamaClient = ollama_client or OllamaClient()
+    checks: list[DoctorCheck] = [
+        _check_command("git", ["git", "--version"]),
+        _check_command("rg", ["rg", "--version"]),
+        _check_ollama(client),
+    ]
+    if target_path is not None:
+        checks.append(_check_git_repo(target_path))
+    return checks
+
+
+def _check_command(name: str, argv: list[str]) -> DoctorCheck:
+    binary: str | None = shutil.which(argv[0])
+    if binary is None:
+        return DoctorCheck(name=name, is_ok=False, detail=f"{argv[0]} not found on PATH")
+    try:
+        completed: subprocess.CompletedProcess[str] = subprocess.run(
+            argv,
+            check=False,
+            capture_output=True,
+            text=True,
         )
-    )
-    if project_path is not None:
-        root: Path = project_path.resolve()
-        is_git: bool = (root / ".git").exists()
-        if not is_git:
-            try:
-                completed = subprocess.run(
-                    ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
-                is_git = completed.returncode == 0
-            except Exception:
-                is_git = False
-        results.append(
-            CheckResult(
-                "project_git",
-                is_git,
-                str(root) if is_git else f"not a git repo: {root}",
-            )
+    except OSError as err:
+        return DoctorCheck(name=name, is_ok=False, detail=str(err))
+    detail: str = (completed.stdout or completed.stderr or "").strip().splitlines()[0]
+    return DoctorCheck(name=name, is_ok=completed.returncode == 0, detail=detail)
+
+
+def _check_ollama(client: OllamaClient) -> DoctorCheck:
+    if not client.is_available():
+        return DoctorCheck(
+            name="ollama",
+            is_ok=False,
+            detail="no response from http://127.0.0.1:11434/api/tags",
         )
-    return results
+    models: list[str] = client.list_models()
+    if models:
+        preview: str = ", ".join(models[:5])
+        return DoctorCheck(name="ollama", is_ok=True, detail=f"ok — models: {preview}")
+    return DoctorCheck(
+        name="ollama",
+        is_ok=True,
+        detail="ok — server up, no models pulled yet",
+    )
+
+
+def _check_git_repo(target_path: Path) -> DoctorCheck:
+    resolved: Path = target_path.resolve()
+    if not resolved.exists():
+        return DoctorCheck(name="target-git", is_ok=False, detail=f"missing path: {resolved}")
+    git_dir: Path = resolved / ".git"
+    if git_dir.exists():
+        return DoctorCheck(name="target-git", is_ok=True, detail=f"git repo at {resolved}")
+    return DoctorCheck(
+        name="target-git",
+        is_ok=False,
+        detail=f"not a git repo: {resolved}",
+    )

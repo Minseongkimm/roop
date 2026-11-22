@@ -1,32 +1,78 @@
 # Roop
 
 Local autonomous coding agent engine for MacBook Air M3 (16GB).  
-Python + Ollama. One local model, sequential roles. Writes only under `<project>/.agent/` until later phases.
+Phase 0 scaffold: CLI shell, Ollama adapter, SQLite task queue stub, and a write guard that only allows `<target>/.agent/**`.
 
-## Install (Mac)
+**Stack:** Python 3.11+ · Ollama on `localhost:11434` · 7–8B local model
+
+## Mac M3 setup
 
 ```bash
-brew install git ripgrep
-# Ollama: https://ollama.com — then:
-ollama pull qwen2.5-coder:7b   # or another 7–8B Q4-class model
+# tools
+xcode-select --install   # if needed
+brew install git ripgrep jq ollama
 
+# model server (one 7–8B Q4 model — do not load two large models)
+ollama serve
+ollama pull qwen2.5-coder:7b
+# or: ollama pull llama3.1:8b
+curl -s http://127.0.0.1:11434/api/tags | jq .
+
+# optional memory guardrail
+export OLLAMA_CONTEXT_LENGTH=32768
+```
+
+## Install
+
+```bash
+git clone https://github.com/Minseongkimm/roop.git
 cd roop
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
-roop doctor
 ```
 
-## CLI
+## Commands that work (Phase 0)
 
 ```bash
 roop doctor
-roop analyze /path/to/project   # scaffold .agent/ only
-roop enqueue /path/to/project "fix login redirect"
-roop tick /path/to/project      # one orchestrator tick (stub)
-roop version
+roop doctor --path /path/to/your-app
+roop analyze /path/to/your-app
+roop enqueue "demo task" --db /path/to/your-app/.agent/roop-tasks.sqlite3
+roop tick --db /path/to/your-app/.agent/roop-tasks.sqlite3
+pytest
 ```
 
-## Phase 0 status
+- `doctor` — checks `git`, `rg`, Ollama `/api/tags`, and optional target git repo
+- `analyze` — stub that detects stack markers and writes a minimal `.agent/` tree (no source edits)
+- `enqueue` / `tick` — SQLite queue helpers for the sequential orchestrator stub
 
-Implemented: CLI, Ollama adapter, FS write guard, SQLite task stub, analyze skeleton.  
-Not yet: full Context Builder, real Coder tools, Verifier loop, night scheduler.
+## Safety defaults
+
+- Writes allowed only under `<target>/.agent/**`
+- Source, lockfiles, and configs are read-only in Phase 0
+- No worktree/branch creation yet
+- Cloud API lane is off by default
+
+## Layout
+
+```text
+src/roop/
+  cli.py                 # typer entrypoint
+  doctor.py
+  adapters/
+    model.py             # ModelAdapter protocol
+    ollama.py            # HTTP client → :11434
+  harness/
+    fs_guard.py          # .agent/** write fence
+  orchestrator/
+    tasks.py             # SQLite CRUD
+    loop.py              # single sequential tick stub
+  analyze/
+    stub.py              # Phase 0 analyze scaffold
+tests/
+```
+
+## Design notes
+
+Small local models win through orchestration, not raw IQ: one role per tick, short JSON outputs, narrow tools, and a code Verifier. See Project docs for Phase 1+.
