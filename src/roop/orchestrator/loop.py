@@ -115,11 +115,21 @@ class OrchestratorLoop:
             model=self._model,
             dry_run=self._dry_run,
         )
-        execution: ExecutionResult = executor.execute(
-            task,
-            self._role,
-            verifier_feedback=feedback,
-        )
+        try:
+            execution: ExecutionResult = executor.execute(
+                task,
+                self._role,
+                verifier_feedback=feedback,
+            )
+        except Exception as exc:
+            failure = f"EXECUTION ERROR: {type(exc).__name__}: {exc}"
+            self._store.set_failure_feedback(task.id, failure)
+            self._store.transition(task.id, PENDING, reason=failure[:200])
+            return TickResult(
+                did_work=True,
+                task_id=task.id,
+                message=f"tick ERROR task {task.id} → pending: {type(exc).__name__}",
+            )
         verifier: Verifier = Verifier(self._project_root)
         try:
             verify: VerifyResult = verifier.verify(task, execution)

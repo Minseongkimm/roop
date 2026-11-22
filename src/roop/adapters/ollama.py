@@ -60,7 +60,16 @@ class OllamaClient:
         }
         with httpx.Client(timeout=self._timeout_seconds) as client:
             response: httpx.Response = client.post(f"{self._base_url}/api/chat", json=body)
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                detail = response.text.strip()[:1500]
+                message = f"{exc} | Ollama response: {detail}"
+                raise httpx.HTTPStatusError(
+                    message,
+                    request=response.request,
+                    response=response,
+                ) from exc
             payload: dict[str, object] = response.json()
         message_obj: object = payload.get("message", {})
         content: str = ""
