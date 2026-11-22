@@ -9,6 +9,7 @@ from typing import Any, Sequence
 
 from roop.adapters.model import ChatMessage, ModelAdapter, ModelResponse
 from roop.adapters.ollama import OllamaClient
+from roop.eval.suite import is_noop_verify_command
 from roop.context.builder import BuildResult, ContextBuilder, ContextPacket
 from roop.context.roles import AgentRole
 from roop.executor.json_util import parse_json_object
@@ -50,7 +51,7 @@ class AgentExecutor:
     ) -> None:
         self._project_root: Path = project_root.resolve()
         self._store: TaskStore = store
-        self._model: ModelAdapter = model or OllamaClient(timeout_seconds=120.0)
+        self._model: ModelAdapter = model or OllamaClient(timeout_seconds=300.0)
         self._dry_run: bool = dry_run
         self._builder: ContextBuilder = ContextBuilder(self._project_root)
 
@@ -280,6 +281,9 @@ class AgentExecutor:
                 title: str = str(item.get("title") or item.get("goal") or "").strip()
                 if not title:
                     continue
+                verify_command: str = str(item.get("verify_command") or "")
+                if is_noop_verify_command(verify_command):
+                    continue
                 child = self._store.create_task(
                     title,
                     description=str(item.get("description") or ""),
@@ -292,7 +296,7 @@ class AgentExecutor:
                         or item.get("ac")
                         or ""
                     ),
-                    verify_command=str(item.get("verify_command") or ""),
+                    verify_command=verify_command,
                     priority=int(item.get("priority") or task.priority),
                     depends_on=_as_int_list(item.get("depends_on")),
                 )

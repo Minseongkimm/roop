@@ -59,6 +59,10 @@ class Task:
     updated_at: str = ""
     block_reason: str = ""
     last_failure_feedback: str = ""
+    local_verify_failures: int = 0
+    api_calls: int = 0
+    estimated_cost_usd: float = 0.0
+    outcome: str = ""
 
 
 class TaskStore:
@@ -93,9 +97,10 @@ class TaskStore:
                 INSERT INTO tasks (
                     title, status, allow_paths, retry_count, acceptance_criteria,
                     description, feature_ids, priority, depends_on, verify_command,
-                    max_retries, updated_at, block_reason, last_failure_feedback
+                    max_retries, updated_at, block_reason, last_failure_feedback,
+                    local_verify_failures, api_calls, estimated_cost_usd, outcome
                 )
-                VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, '', '')
+                VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, 0, '')
                 """,
                 (
                     title,
@@ -251,7 +256,11 @@ class TaskStore:
                     max_retries INTEGER NOT NULL DEFAULT 3,
                     updated_at TEXT NOT NULL DEFAULT '',
                     block_reason TEXT NOT NULL DEFAULT '',
-                    last_failure_feedback TEXT NOT NULL DEFAULT ''
+                    last_failure_feedback TEXT NOT NULL DEFAULT '',
+                    local_verify_failures INTEGER NOT NULL DEFAULT 0,
+                    api_calls INTEGER NOT NULL DEFAULT 0,
+                    estimated_cost_usd REAL NOT NULL DEFAULT 0,
+                    outcome TEXT NOT NULL DEFAULT ''
                 )
                 """
             )
@@ -273,6 +282,10 @@ class TaskStore:
             "updated_at": "TEXT NOT NULL DEFAULT ''",
             "block_reason": "TEXT NOT NULL DEFAULT ''",
             "last_failure_feedback": "TEXT NOT NULL DEFAULT ''",
+            "local_verify_failures": "INTEGER NOT NULL DEFAULT 0",
+            "api_calls": "INTEGER NOT NULL DEFAULT 0",
+            "estimated_cost_usd": "REAL NOT NULL DEFAULT 0",
+            "outcome": "TEXT NOT NULL DEFAULT ''",
         }
         for name, ddl in additions.items():
             if name not in existing:
@@ -305,6 +318,10 @@ class TaskStore:
             updated_at=str(row["updated_at"] or ""),
             block_reason=str(row["block_reason"] or ""),
             last_failure_feedback=str(row["last_failure_feedback"] or ""),
+            local_verify_failures=int(row["local_verify_failures"] or 0),
+            api_calls=int(row["api_calls"] or 0),
+            estimated_cost_usd=float(row["estimated_cost_usd"] or 0.0),
+            outcome=str(row["outcome"] or ""),
         )
 
     def set_failure_feedback(self, task_id: int, feedback: str) -> None:
@@ -321,11 +338,65 @@ class TaskStore:
                 raise KeyError(f"Task not found: {task_id}")
             connection.commit()
 
+    def add_local_verify_failure(self, task_id: int) -> Task:
+        with self._connect() as connection:
+            cursor: sqlite3.Cursor = connection.execute(
+                """
+                UPDATE tasks
+                SET local_verify_failures = local_verify_failures + 1,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (_utc_now(), task_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(f"Task not found: {task_id}")
+            connection.commit()
+        return self.get_task(task_id)
+
+    def add_usage(
+        self,
+        task_id: int,
+        *,
+        api_calls: int,
+        estimated_cost_usd: float,
+    ) -> Task:
+        with self._connect() as connection:
+            cursor: sqlite3.Cursor = connection.execute(
+                """
+                UPDATE tasks
+                SET api_calls = api_calls + ?,
+                    estimated_cost_usd = estimated_cost_usd + ?,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (int(api_calls), float(estimated_cost_usd), _utc_now(), task_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(f"Task not found: {task_id}")
+            connection.commit()
+        return self.get_task(task_id)
+
+    def set_outcome(self, task_id: int, outcome: str) -> None:
+        with self._connect() as connection:
+            cursor: sqlite3.Cursor = connection.execute(
+                """
+                UPDATE tasks
+                SET outcome = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (outcome, _utc_now(), task_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(f"Task not found: {task_id}")
+            connection.commit()
+
 
 _SELECT_COLUMNS: str = (
     "id, title, status, allow_paths, retry_count, acceptance_criteria, "
     "description, feature_ids, priority, depends_on, verify_command, "
-    "max_retries, updated_at, block_reason, last_failure_feedback"
+    "max_retries, updated_at, block_reason, last_failure_feedback, "
+    "local_verify_failures, api_calls, estimated_cost_usd, outcome"
 )
 
 

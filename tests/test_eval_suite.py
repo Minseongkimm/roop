@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from roop.eval.runner import enqueue_suite, run_suite
 from roop.eval.suite import default_suite_path, load_suite
 from roop.eval.tamper import TamperGuard
@@ -34,6 +36,51 @@ def test_enqueue_suite(tmp_path: Path) -> None:
     assert "clamp" in task.title.lower()
     assert task.allow_paths == "src/**"
     assert (project / "tests" / "test_clamp.py").is_file()
+
+
+def test_medium_tasks_are_fixed_goldens() -> None:
+    suite = load_suite(default_suite_path())
+    medium = suite.by_difficulty("medium")
+    assert len(medium) == 10
+    for item in medium:
+        assert item.verify_command
+        assert item.golden_test
+        assert item.allow_paths == "src/**"
+        assert "tests/**" not in item.allow_paths
+        golden = suite.path.parent / item.golden_test
+        assert golden.is_file()
+        text = golden.read_text(encoding="utf-8")
+        assert "unittest" in text
+        assert item.verify_command.endswith(golden.name + " -v") or golden.name in item.verify_command
+
+
+def test_enqueue_rejects_noop_verify(tmp_path: Path) -> None:
+    import json
+
+    manifest = tmp_path / "suite.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "name": "tiny",
+                "tasks": [
+                    {
+                        "id": "empty-check",
+                        "title": "Empty check",
+                        "verify_command": "true",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    project = tmp_path / "app"
+    project.mkdir()
+    with pytest.raises(ValueError, match="noop"):
+        enqueue_suite(
+            project_root=project,
+            suite=load_suite(manifest),
+            database_path=project / "eval.sqlite3",
+        )
 
 
 def test_noop_verify_command_rejected() -> None:
