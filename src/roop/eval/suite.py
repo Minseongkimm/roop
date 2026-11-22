@@ -18,6 +18,7 @@ class EvalTask:
     acceptance_criteria: str
     verify_command: str
     protected_globs: tuple[str, ...] = ()
+    golden_test: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,10 +58,11 @@ def load_suite(manifest_path: Path) -> EvalSuite:
                 title=title,
                 description=str(item.get("description") or ""),
                 difficulty=str(item.get("difficulty") or "easy"),
-                allow_paths=str(item.get("allow_paths") or "src/**,tests/**"),
+                allow_paths=str(item.get("allow_paths") or "src/**"),
                 acceptance_criteria=str(item.get("acceptance_criteria") or ""),
                 verify_command=str(item.get("verify_command") or default_verify),
                 protected_globs=protected,
+                golden_test=str(item.get("golden_test") or ""),
             )
         )
     return EvalSuite(
@@ -73,3 +75,17 @@ def load_suite(manifest_path: Path) -> EvalSuite:
 
 def default_suite_path() -> Path:
     return Path(__file__).resolve().parents[3] / "evals" / "v1" / "manifest.json"
+
+
+def is_noop_verify_command(command: str) -> bool:
+    """Return True when a verify command would always pass or is empty."""
+    text: str = command.strip().lower()
+    if not text:
+        return True
+    # strip simple shell no-ops
+    compact: str = " ".join(text.split())
+    if compact in {"true", ":", "/bin/true", "cmd /c exit 0"}:
+        return True
+    if compact.startswith("true ") or compact == "exit 0":
+        return True
+    return False

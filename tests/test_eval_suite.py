@@ -32,6 +32,17 @@ def test_enqueue_suite(tmp_path: Path) -> None:
     store = TaskStore(db)
     task = store.get_task(result.task_ids[0])
     assert "clamp" in task.title.lower()
+    assert task.allow_paths == "src/**"
+    assert (project / "tests" / "test_clamp.py").is_file()
+
+
+def test_noop_verify_command_rejected() -> None:
+    from roop.eval.suite import is_noop_verify_command
+
+    assert is_noop_verify_command("") is True
+    assert is_noop_verify_command("true") is True
+    assert is_noop_verify_command(":") is True
+    assert is_noop_verify_command("python3 -m unittest discover -s tests -v") is False
 
 
 def test_tamper_guard_detects_modified_test(tmp_path: Path) -> None:

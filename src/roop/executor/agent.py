@@ -424,15 +424,14 @@ def _dry_run_payload(*, role: AgentRole, task: Task) -> str:
 
 
 def normalize_model_text(text: str) -> str:
-    """Turn over-escaped ``\\n`` / ``\\t`` from models into real whitespace.
+    """Unescape literal ``\\n`` / ``\\t`` only for single-line over-escaped bodies.
 
-    Some local models emit a single-line file body with literal backslash-n
-    instead of JSON newlines. That writes invalid Python and shows up as
-    ``ImportError: Failed to import test module``.
+    If the body already contains any real newline, leave it unchanged so in-code
+    string literals like ``\"a\\nb\"`` are not corrupted.
     """
     if not text:
         return text
-    if "\n" in text or "\t" in text:
+    if "\n" in text or "\t" in text or "\r" in text:
         return text
     if "\\n" not in text and "\\t" not in text and "\\r" not in text:
         return text

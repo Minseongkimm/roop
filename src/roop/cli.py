@@ -304,6 +304,14 @@ def enqueue_command(
     ),
 ) -> None:
     """Enqueue a pending task into the SQLite queue."""
+    from roop.eval.suite import is_noop_verify_command
+
+    if is_noop_verify_command(verify):
+        typer.echo(
+            "refusing enqueue: provide a real --verify command (not empty/true/:)",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     store: TaskStore = TaskStore(db)
     feature_ids: str = ",".join(feature) if feature else ""
     task: Task = store.create_task(
@@ -443,8 +451,10 @@ def eval_scorecard_command(
     database: Path = db
     if project is not None and not db.is_absolute():
         database = project / db
+    from roop.eval.scorecard import engine_commit_hash
+
     rows = build_scorecard(database)
-    typer.echo(render_scorecard(rows))
+    typer.echo(render_scorecard(rows, engine_commit=engine_commit_hash()))
     if project is not None:
         rounds = project / ".agent" / "runs" / "rounds.jsonl"
         typer.echo(summarize_rounds(rounds))

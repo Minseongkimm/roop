@@ -7,121 +7,131 @@
       "id": "math-mean-median",
       "difficulty": "easy",
       "title": "Implement mean and median",
-      "description": "Create src/math_utils.py with mean() and median(). Empty list raises ValueError. Do not mutate input. Create tests/test_math_utils.py with unittest covering mean([1,2,3])==2, median([1,2,3])==2, median([1,2,3,4])==2.5, empty list ValueError.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/math_utils.py with mean() and median(). Empty list raises ValueError. Do not mutate input. Create tests/test_math_utils.py with unittest covering mean([1,2,3])==2, median([1,2,3])==2, median([1,2,3,4])==2.5, empty list ValueError.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "mean/median behave as described; unittest passes",
       "verify_command": "python3 -m unittest discover -s tests -p test_math_utils.py -v",
       "protected_globs": [
         "tests/test_math_utils.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_math_utils.py"
     },
     {
       "id": "clamp-util",
       "difficulty": "easy",
       "title": "Implement clamp utility",
-      "description": "Create src/clamp.py with clamp(value, low, high) returning value limited to [low, high]. If low > high raise ValueError. Add tests/test_clamp.py unittest.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/clamp.py with clamp(value, low, high) returning value limited to [low, high]. If low > high raise ValueError. Add tests/test_clamp.py unittest.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "clamp(5,0,10)==5, clamp(-1,0,10)==0, clamp(99,0,10)==10, low>high ValueError",
       "verify_command": "python3 -m unittest discover -s tests -p test_clamp.py -v",
       "protected_globs": [
         "tests/test_clamp.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_clamp.py"
     },
     {
       "id": "slugify",
       "difficulty": "easy",
       "title": "Implement slugify",
-      "description": "Create src/slugify.py with slugify(text) that lowercases, replaces spaces with '-', strips non-alnum except '-', collapses repeats. Add tests/test_slugify.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/slugify.py with slugify(text) that lowercases, replaces spaces with '-', strips non-alnum except '-', collapses repeats. Add tests/test_slugify.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "slugify('Hello World')=='hello-world'; empty -> ''; unittest passes",
       "verify_command": "python3 -m unittest discover -s tests -p test_slugify.py -v",
       "protected_globs": [
         "tests/test_slugify.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_slugify.py"
     },
     {
       "id": "stack-class",
       "difficulty": "easy",
       "title": "Implement Stack class",
-      "description": "Create src/stack.py with Stack having push, pop, peek, is_empty, size. pop/peek on empty raise IndexError. Add tests/test_stack.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/stack.py with Stack having push, pop, peek, is_empty, size. pop/peek on empty raise IndexError. Add tests/test_stack.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "stack ops work; empty pop/peek IndexError; unittest passes",
       "verify_command": "python3 -m unittest discover -s tests -p test_stack.py -v",
       "protected_globs": [
         "tests/test_stack.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_stack.py"
     },
     {
       "id": "parse-kv",
       "difficulty": "easy",
       "title": "Parse key=value lines",
-      "description": "Create src/kv.py with parse_kv(text) returning dict from lines 'key=value', ignore blank/# comments, last duplicate wins. Add tests/test_kv.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/kv.py with parse_kv(text) returning dict from lines 'key=value', ignore blank/# comments, last duplicate wins. Add tests/test_kv.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "parse_kv handles comments/blanks/duplicates; unittest passes",
       "verify_command": "python3 -m unittest discover -s tests -p test_kv.py -v",
       "protected_globs": [
         "tests/test_kv.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_kv.py"
     },
     {
       "id": "is-palindrome",
       "difficulty": "easy",
       "title": "Implement is_palindrome",
-      "description": "Create src/palindrome.py with is_palindrome(text) ignoring case and non-alphanumeric chars. Add tests/test_palindrome.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/palindrome.py with is_palindrome(text) ignoring case and non-alphanumeric chars. Add tests/test_palindrome.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "is_palindrome('A man, a plan, a canal: Panama') is True; empty True; unittest passes",
       "verify_command": "python3 -m unittest discover -s tests -p test_palindrome.py -v",
       "protected_globs": [
         "tests/test_palindrome.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_palindrome.py"
     },
     {
       "id": "chunk-list",
       "difficulty": "easy",
       "title": "Chunk a list",
-      "description": "Create src/chunk.py with chunk_list(items, size) yielding/returning consecutive chunks. size < 1 raises ValueError. Add tests/test_chunk.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/chunk.py with chunk_list(items, size) yielding/returning consecutive chunks. size < 1 raises ValueError. Add tests/test_chunk.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "chunk_list([1,2,3,4,5],2)==[[1,2],[3,4],[5]]; size 0 ValueError",
       "verify_command": "python3 -m unittest discover -s tests -p test_chunk.py -v",
       "protected_globs": [
         "tests/test_chunk.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_chunk.py"
     },
     {
       "id": "flatten-once",
       "difficulty": "easy",
       "title": "Flatten one level",
-      "description": "Create src/flatten.py with flatten_once(seq) flattening one nesting level only. Add tests/test_flatten.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/flatten.py with flatten_once(seq) flattening one nesting level only. Add tests/test_flatten.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "flatten_once([1,[2,3],[4]])==[1,2,3,4]; nested deeper stays nested one level",
       "verify_command": "python3 -m unittest discover -s tests -p test_flatten.py -v",
       "protected_globs": [
         "tests/test_flatten.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_flatten.py"
     },
     {
       "id": "counter-top",
       "difficulty": "easy",
       "title": "Top-N counter",
-      "description": "Create src/counter_top.py with top_n(items, n) returning most common items as list of (item, count) sorted by count desc then item. n<1 raises ValueError. Add tests/test_counter_top.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/counter_top.py with top_n(items, n) returning most common items as list of (item, count) sorted by count desc then item. n<1 raises ValueError. Add tests/test_counter_top.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "top_n(['a','b','a'],2) works; unittest passes",
       "verify_command": "python3 -m unittest discover -s tests -p test_counter_top.py -v",
       "protected_globs": [
         "tests/test_counter_top.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_counter_top.py"
     },
     {
       "id": "safe-div",
       "difficulty": "easy",
       "title": "Safe division",
-      "description": "Create src/safe_div.py with safe_div(a,b, default=None) returning a/b or default when b==0. Add tests/test_safe_div.py.",
-      "allow_paths": "src/**,tests/**",
+      "description": "Implement only the source file under src/. Do NOT create or modify tests; golden tests are already provided. Create src/safe_div.py with safe_div(a,b, default=None) returning a/b or default when b==0. Add tests/test_safe_div.py.",
+      "allow_paths": "src/**",
       "acceptance_criteria": "safe_div(10,2)==5; safe_div(1,0,0)==0; unittest passes",
       "verify_command": "python3 -m unittest discover -s tests -p test_safe_div.py -v",
       "protected_globs": [
         "tests/test_safe_div.py"
-      ]
+      ],
+      "golden_test": "golden/tests/test_safe_div.py"
     },
     {
       "id": "merge-dicts",

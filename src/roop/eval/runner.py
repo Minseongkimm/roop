@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
 from roop.context.roles import AgentRole
-from roop.eval.suite import EvalSuite, EvalTask, load_suite
+from roop.eval.suite import (
+    EvalSuite,
+    EvalTask,
+    is_noop_verify_command,
+    load_suite,
+)
 from roop.eval.tamper import TamperGuard, TamperResult
 from roop.orchestrator.loop import OrchestratorLoop, TickResult
 from roop.orchestrator.tasks import Task, TaskStore
@@ -27,20 +33,56 @@ class EvalRunResult:
     tamper: TamperResult | None = None
 
 
+def install_golden_tests(
+    *,
+    project_root: Path,
+    suite: EvalSuite,
+    task_ids: list[str] | None = None,
+) -> list[Path]:
+    """Copy golden tests into the project ``tests/`` directory."""
+    suite_dir: Path = suite.path.parent
+    written: list[Path] = []
+    tests_dir: Path = project_root / "tests"
+    tests_dir.mkdir(parents=True, exist_ok=True)
+    for item in suite.tasks:
+        if task_ids and item.id not in task_ids:
+            continue
+        if not item.golden_test:
+            continue
+        source: Path = (suite_dir / item.golden_test).resolve()
+        if not source.is_file():
+            raise FileNotFoundError(f"golden test missing: {source}")
+        target: Path = tests_dir / source.name
+        shutil.copyfile(source, target)
+        written.append(target)
+    return written
+
+
 def enqueue_suite(
     *,
     project_root: Path,
     suite: EvalSuite,
     database_path: Path,
     task_ids: list[str] | None = None,
+    install_goldens: bool = True,
 ) -> EvalEnqueueResult:
     store: TaskStore = TaskStore(database_path)
     selected: list[EvalTask] = list(suite.tasks)
     if task_ids:
         wanted: set[str] = set(task_ids)
         selected = [item for item in selected if item.id in wanted]
+    if install_goldens:
+        install_golden_tests(
+            project_root=project_root,
+            suite=suite,
+            task_ids=[item.id for item in selected],
+        )
     created: list[int] = []
     for item in selected:
+        if is_noop_verify_command(item.verify_command):
+            raise ValueError(
+                f"refusing to enqueue eval task {item.id}: noop verify_command"
+            )
         task: Task = store.create_task(
             f"[eval:{item.id}] {item.title}",
             description=item.description,

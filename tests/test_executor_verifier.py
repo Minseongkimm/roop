@@ -37,7 +37,7 @@ def test_dry_run_coder_tick_is_green(tmp_path: Path) -> None:
     store.create_task(
         "dry coder",
         allow_paths=".agent/**",
-        verify_command="true",
+        verify_command="python3 -c \"print(1)\"",
         max_retries=3,
     )
     loop: OrchestratorLoop = OrchestratorLoop.from_database(
@@ -109,7 +109,7 @@ def test_night_scheduler_dry_run(tmp_path: Path) -> None:
     (project / ".agent" / "project" / "overview.md").write_text("x\n", encoding="utf-8")
     db: Path = project / ".agent" / "roop-tasks.sqlite3"
     store: TaskStore = TaskStore(db)
-    store.create_task("night one", allow_paths=".agent/**", verify_command="true")
+    store.create_task("night one", allow_paths=".agent/**", verify_command="python3 -c \"print(1)\"")
     scheduler: NightScheduler = NightScheduler(
         project,
         db,
@@ -365,6 +365,19 @@ def test_normalize_model_text_unescapes_newlines() -> None:
     assert actual.splitlines()[0] == "def slugify(text):"
 
 
+def test_normalize_model_text_preserves_real_newline_string_literals() -> None:
+    from roop.executor.agent import normalize_model_text
+
+    # File already has real newlines; embedded "a\nb" must stay a two-char escape
+    # inside the Python string literal, not be rewritten.
+    raw = 'def label():\n    return "a\\nb"\n'
+    actual = normalize_model_text(raw)
+    assert actual == raw
+    namespace: dict[str, object] = {}
+    exec(actual, namespace)
+    assert namespace["label"]() == "a\nb"
+
+
 def test_executor_writes_unescaped_content_for_new_file(tmp_path: Path) -> None:
     import json
 
@@ -391,7 +404,7 @@ def test_executor_writes_unescaped_content_for_new_file(tmp_path: Path) -> None:
     task = store.create_task(
         "unescape slugify",
         allow_paths="src/**",
-        verify_command="true",
+        verify_command="python3 -c \"print(1)\"",
     )
     result = AgentExecutor(project, store, model=FakeModel()).execute(
         task, AgentRole.CODER
@@ -427,7 +440,7 @@ def test_executor_creates_missing_path_from_find_replace(tmp_path: Path) -> None
     task = store.create_task(
         "create missing test via find/replace",
         allow_paths="tests/**",
-        verify_command="true",
+        verify_command="python3 -c \"print(1)\"",
     )
     executor = AgentExecutor(project, store, model=FakeModel())
     result = executor.execute(task, AgentRole.CODER)
@@ -460,7 +473,7 @@ def test_executor_normalizes_empty_find_to_content_for_new_file(tmp_path: Path) 
     task = store.create_task(
         "create math utils",
         allow_paths="src/**",
-        verify_command="true",
+        verify_command="python3 -c \"print(1)\"",
     )
     executor = AgentExecutor(project, store, model=FakeModel())
 
@@ -496,7 +509,7 @@ def test_executor_rejects_full_content_for_existing_file(tmp_path: Path) -> None
     task = store.create_task(
         "reject overwrite",
         allow_paths="src/**",
-        verify_command="true",
+        verify_command="python3 -c \"print(1)\"",
     )
     executor = AgentExecutor(project, store, model=FakeModel())
 

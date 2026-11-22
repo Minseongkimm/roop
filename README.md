@@ -24,7 +24,7 @@ roop analyze /path/to/app
 
 # Task queue
 roop enqueue "fix free-message gate" \
-  --feature chat --allow-paths ".agent/**" --verify "true" \
+  --feature chat --allow-paths ".agent/**" --verify "python3 -m pytest -q" \
   --db /path/to/app/.agent/roop-tasks.sqlite3
 roop tasks list --db /path/to/app/.agent/roop-tasks.sqlite3
 

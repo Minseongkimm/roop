@@ -63,7 +63,7 @@ def test_dry_run_tick_writes_rounds_jsonl(tmp_path: Path) -> None:
     store.create_task(
         "dry coder",
         allow_paths=".agent/**",
-        verify_command="true",
+        verify_command="python3 -c \"print(1)\"",
         max_retries=3,
     )
     loop = OrchestratorLoop.from_database(
@@ -88,8 +88,8 @@ def test_night_max_ticks_sets_stop_reason(tmp_path: Path) -> None:
     (project / ".agent" / "project" / "overview.md").write_text("x\n", encoding="utf-8")
     db = project / ".agent" / "roop-tasks.sqlite3"
     store = TaskStore(db)
-    store.create_task("one", allow_paths=".agent/**", verify_command="true")
-    store.create_task("two", allow_paths=".agent/**", verify_command="true")
+    store.create_task("one", allow_paths=".agent/**", verify_command="python3 -c \"print(1)\"")
+    store.create_task("two", allow_paths=".agent/**", verify_command="python3 -c \"print(1)\"")
     scheduler = NightScheduler(
         project,
         db,

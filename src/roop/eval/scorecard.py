@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from roop.orchestrator.tasks import TaskStatus, TaskStore
+from roop.orchestrator.tasks import TaskStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +24,20 @@ class ScorecardRow:
         if self.total == 0:
             return 0.0
         return self.done / self.total
+
+
+def engine_commit_hash(repo_root: Path | None = None) -> str:
+    root: Path = repo_root or Path(__file__).resolve().parents[3]
+    completed = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        return "unknown"
+    return (completed.stdout or "").strip() or "unknown"
 
 
 def build_scorecard(database_path: Path) -> list[ScorecardRow]:
@@ -48,8 +63,14 @@ def build_scorecard(database_path: Path) -> list[ScorecardRow]:
     return rows
 
 
-def render_scorecard(rows: list[ScorecardRow]) -> str:
+def render_scorecard(
+    rows: list[ScorecardRow],
+    *,
+    engine_commit: str | None = None,
+) -> str:
+    commit: str = engine_commit if engine_commit is not None else engine_commit_hash()
     lines: list[str] = [
+        f"engine_commit\t{commit}",
         "difficulty\ttotal\tdone\tblocked\tpending\tsuccess",
     ]
     for row in rows:
