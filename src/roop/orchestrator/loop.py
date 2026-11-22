@@ -122,6 +122,7 @@ class OrchestratorLoop:
         packet_path: str | None = execution.packet_path
         if verify.green:
             self._store.set_failure_feedback(task.id, "")
+            self._store.transition(task.id, TaskStatus.DONE)  # 추가된 코드
             LessonStore(self._project_root).append(
                 Lesson(
                     task_id=task.id,
