@@ -19,6 +19,7 @@ class TickResult:
     message: str
     packet_path: str | None = None
     green: bool | None = None
+    round_log_path: str | None = None
 
 
 class OrchestratorLoop:
@@ -102,6 +103,15 @@ class OrchestratorLoop:
     def _tick_execute(self, task: Task) -> TickResult:
         from roop.executor.agent import AgentExecutor, ExecutionResult
         from roop.memory.lessons import Lesson, LessonStore
+        from roop.telemetry.rounds import (
+            RoundLog,
+            RoundRecord,
+            estimate_tokens,
+            extract_error_signature,
+            extract_test_counts,
+            patch_diff_stat,
+            utc_now_iso,
+        )
         from roop.verifier.engine import Verifier, VerifyResult
 
         assert self._project_root is not None
@@ -125,10 +135,27 @@ class OrchestratorLoop:
             failure = f"EXECUTION ERROR: {type(exc).__name__}: {exc}"
             self._store.set_failure_feedback(task.id, failure)
             self._store.transition(task.id, TaskStatus.PENDING, reason=failure[:200])
+            log_path = self._append_round(
+                RoundRecord(
+                    ts=utc_now_iso(),
+                    task_id=task.id,
+                    role=self._role.value,
+                    green=False,
+                    exit_code=None,
+                    error_signature=extract_error_signature(failure),
+                    tests_ran=None,
+                    tests_passed=None,
+                    tokens_est=None,
+                    model="",
+                    message=failure,
+                    status="error",
+                )
+            )
             return TickResult(
                 did_work=True,
                 task_id=task.id,
                 message=f"tick ERROR task {task.id} → pending: {type(exc).__name__}",
+                round_log_path=str(log_path) if log_path else None,
             )
         verifier: Verifier = Verifier(self._project_root)
         try:
@@ -139,11 +166,24 @@ class OrchestratorLoop:
             raise
 
         packet_path: str | None = execution.packet_path
+        command_out: str = ""
+        if execution.command is not None:
+            command_out = (
+                f"{execution.command.stdout}\n{execution.command.stderr}"
+            )
+        if verify.saw:
+            command_out = f"{command_out}\n{verify.saw}"
+        for detail in verify.details:
+            command_out = f"{command_out}\n{detail}"
+        tests_ran, tests_passed = extract_test_counts(command_out)
+        diff_stat = patch_diff_stat(execution.patches)
+        tokens_est = estimate_tokens(execution.model_raw)
+
         if verify.green:
             if execution.transaction is not None:
                 execution.transaction.commit()
             self._store.set_failure_feedback(task.id, "")
-            self._store.transition(task.id, TaskStatus.DONE)  # 추가된 코드
+            self._store.transition(task.id, TaskStatus.DONE)
             LessonStore(self._project_root).append(
                 Lesson(
                     task_id=task.id,
@@ -151,15 +191,36 @@ class OrchestratorLoop:
                     evidence=verify.saw[:200],
                 )
             )
+            message = (
+                f"tick GREEN task {task.id}: {task.title} "
+                f"({execution.message})"
+            )
+            log_path = self._append_round(
+                RoundRecord(
+                    ts=utc_now_iso(),
+                    task_id=task.id,
+                    role=self._role.value,
+                    green=True,
+                    exit_code=verify.exit_code,
+                    error_signature="",
+                    tests_ran=tests_ran,
+                    tests_passed=tests_passed,
+                    tokens_est=tokens_est,
+                    model=execution.model,
+                    diff_stat=diff_stat,
+                    patches_applied=diff_stat.get("applied", 0),
+                    patches_total=diff_stat.get("files", 0),
+                    message=message,
+                    status="done",
+                )
+            )
             return TickResult(
                 did_work=True,
                 task_id=task.id,
-                message=(
-                    f"tick GREEN task {task.id}: {task.title} "
-                    f"({execution.message})"
-                ),
+                message=message,
                 packet_path=packet_path,
                 green=True,
+                round_log_path=str(log_path) if log_path else None,
             )
         if execution.transaction is not None:
             execution.transaction.rollback()
@@ -167,18 +228,41 @@ class OrchestratorLoop:
         saw: str = verify.feedback()
         self._store.set_failure_feedback(task.id, saw)
 
-        if previous_saw and previous_saw == saw:
+        # Allow at least a couple of repair attempts before treating an identical
+        # failure signature as a hard block (max_retries still applies).
+        if previous_saw and previous_saw == saw and task.retry_count >= 2:
             self._store.transition(
                 task.id,
                 TaskStatus.BLOCKED,
-                reason="identical SAW twice",
+                reason="identical SAW repeated",
+            )
+            message = f"tick BLOCKED task {task.id}: identical SAW repeated"
+            log_path = self._append_round(
+                RoundRecord(
+                    ts=utc_now_iso(),
+                    task_id=task.id,
+                    role=self._role.value,
+                    green=False,
+                    exit_code=verify.exit_code,
+                    error_signature=extract_error_signature(saw),
+                    tests_ran=tests_ran,
+                    tests_passed=tests_passed,
+                    tokens_est=tokens_est,
+                    model=execution.model,
+                    diff_stat=diff_stat,
+                    patches_applied=diff_stat.get("applied", 0),
+                    patches_total=diff_stat.get("files", 0),
+                    message=message,
+                    status="blocked",
+                )
             )
             return TickResult(
                 did_work=True,
                 task_id=task.id,
-                message=f"tick BLOCKED task {task.id}: identical SAW twice",
+                message=message,
                 packet_path=packet_path,
                 green=False,
+                round_log_path=str(log_path) if log_path else None,
             )
 
         retried: Task = self._store.transition(
@@ -187,26 +271,53 @@ class OrchestratorLoop:
             reason=saw[:200],
         )
         if retried.status == TaskStatus.BLOCKED:
-            return TickResult(
-                did_work=True,
-                task_id=task.id,
-                message=(
-                    f"tick BLOCKED task {task.id}: max retries — "
-                    f"{retried.block_reason}"
-                ),
-                packet_path=packet_path,
-                green=False,
+            message = (
+                f"tick BLOCKED task {task.id}: max retries — "
+                f"{retried.block_reason}"
             )
+            status = "blocked"
+        else:
+            message = (
+                f"tick RED task {task.id} → pending "
+                f"(retry {retried.retry_count}/{retried.max_retries})"
+            )
+            status = "pending"
+        log_path = self._append_round(
+            RoundRecord(
+                ts=utc_now_iso(),
+                task_id=task.id,
+                role=self._role.value,
+                green=False,
+                exit_code=verify.exit_code,
+                error_signature=extract_error_signature(saw),
+                tests_ran=tests_ran,
+                tests_passed=tests_passed,
+                tokens_est=tokens_est,
+                model=execution.model,
+                diff_stat=diff_stat,
+                patches_applied=diff_stat.get("applied", 0),
+                patches_total=diff_stat.get("files", 0),
+                message=message,
+                status=status,
+            )
+        )
         return TickResult(
             did_work=True,
             task_id=task.id,
-            message=(
-                f"tick RED task {task.id} → pending "
-                f"(retry {retried.retry_count}/{retried.max_retries})"
-            ),
+            message=message,
             packet_path=packet_path,
             green=False,
+            round_log_path=str(log_path) if log_path else None,
         )
+
+    def _append_round(self, record: object) -> Path | None:
+        if self._project_root is None:
+            return None
+        from roop.telemetry.rounds import RoundLog, RoundRecord
+
+        if not isinstance(record, RoundRecord):
+            return None
+        return RoundLog(self._project_root).append(record)
 
     def run_until_idle(self, *, max_ticks: int = 100) -> list[TickResult]:
         results: list[TickResult] = []

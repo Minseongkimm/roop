@@ -31,6 +31,7 @@ class ExecutionResult:
     enqueued_task_ids: list[int] = field(default_factory=list)
     message: str = ""
     packet_path: str | None = None
+    model: str = ""
     transaction: FileTransaction | None = field(default=None, compare=False, repr=False)
 
 
@@ -68,11 +69,13 @@ class AgentExecutor:
             str(build.markdown_path) if build.markdown_path else None
         )
         raw: str
+        model_name: str = "dry-run"
         if self._dry_run:
             raw = _dry_run_payload(role=role, task=task)
         else:
             response: ModelResponse = self._model.chat(_messages_from_packet(packet))
             raw = response.content
+            model_name = response.model or ""
         self._persist_raw(task_id=task.id, role=role, raw=raw, suffix="raw")
         try:
             parsed: dict[str, Any] = parse_json_object(raw)
@@ -87,6 +90,7 @@ class AgentExecutor:
                     parsed={},
                     message="JSON parse failed",
                     packet_path=packet_path,
+                    model=model_name,
                 )
             retry: ModelResponse = self._model.chat(
                 list(_messages_from_packet(packet))
@@ -103,6 +107,7 @@ class AgentExecutor:
                 ]
             )
             raw = retry.content
+            model_name = retry.model or model_name
             self._persist_raw(task_id=task.id, role=role, raw=raw, suffix="raw-retry")
             try:
                 parsed = parse_json_object(raw)
@@ -115,6 +120,7 @@ class AgentExecutor:
                     parsed={},
                     message=f"JSON parse failed after retry: {err}",
                     packet_path=packet_path,
+                    model=model_name,
                 )
         return self._apply_parsed(
             task=task,
@@ -122,6 +128,7 @@ class AgentExecutor:
             raw=raw,
             parsed=parsed,
             packet_path=packet_path,
+            model=model_name,
         )
 
     def _persist_raw(
@@ -147,6 +154,7 @@ class AgentExecutor:
         raw: str,
         parsed: dict[str, Any],
         packet_path: str | None,
+        model: str = "",
     ) -> ExecutionResult:
         guard: WriteGuard = WriteGuard(self._project_root).with_allow_paths(
             task.allow_paths
@@ -158,6 +166,7 @@ class AgentExecutor:
                 raw=raw,
                 parsed=parsed,
                 packet_path=packet_path,
+                model=model,
             )
         if role == AgentRole.CODER:
             transaction = FileTransaction(self._project_root)
@@ -169,6 +178,7 @@ class AgentExecutor:
                     parsed=parsed,
                     packet_path=packet_path,
                     transaction=transaction,
+                    model=model,
                 )
             except Exception:
                 transaction.rollback()
@@ -185,6 +195,7 @@ class AgentExecutor:
                 parsed=parsed,
                 message="review approved" if approved and count == 0 else "review blocked",
                 packet_path=packet_path,
+                model=model,
             )
         # tester
         command_text: str = str(
@@ -215,6 +226,7 @@ class AgentExecutor:
                 f"tester exit={command.exit_code}" if command else "tester: no command"
             ),
             packet_path=packet_path,
+            model=model,
         )
 
     def _apply_planner(
@@ -224,6 +236,7 @@ class AgentExecutor:
         raw: str,
         parsed: dict[str, Any],
         packet_path: str | None,
+        model: str = "",
     ) -> ExecutionResult:
         created_ids: list[int] = []
         tasks_raw: Any = parsed.get("tasks", [])
@@ -260,6 +273,7 @@ class AgentExecutor:
             enqueued_task_ids=created_ids,
             message=f"planner enqueued {len(created_ids)} task(s)",
             packet_path=packet_path,
+            model=model,
         )
 
     def _apply_coder(
@@ -271,6 +285,7 @@ class AgentExecutor:
         parsed: dict[str, Any],
         packet_path: str | None,
         transaction: FileTransaction | None = None,
+        model: str = "",
     ) -> ExecutionResult:
         patches: list[PatchResult] = []
         files: Any = parsed.get("files") or parsed.get("patches") or []
@@ -305,6 +320,13 @@ class AgentExecutor:
 
             find: str = str(item.get("find") or item.get("old") or "")
             replace: str = str(item.get("replace") or item.get("new") or item.get("hunk") or "")
+            # Models often emit find/replace for paths that do not exist yet.
+            # Any missing path with a replace/body becomes a content create.
+            if replace and not tools.path_exists(path):
+                if transaction is not None:
+                    transaction.capture(path)
+                patches.append(tools.write_file(path, replace))
+                continue
             if transaction is not None:
                 transaction.capture(path)
             patches.append(
@@ -323,6 +345,7 @@ class AgentExecutor:
             patches=patches,
             message=f"coder applied {applied}/{len(patches)} patch(es)",
             packet_path=packet_path,
+            model=model,
             transaction=transaction,
         )
 
@@ -346,10 +369,13 @@ def _messages_from_packet(packet: ContextPacket) -> Sequence[ChatMessage]:
         user_parts.extend(["## Verifier feedback", packet.verifier_feedback])
     if packet.role == AgentRole.CODER:
         user_parts.append(
-            "Respond with a single JSON object only. For existing files, use exact partial edits:\\n"
+            "Respond with a single JSON object only.\\n"
+            "New files MUST use content (include EVERY new path: implementation AND tests):\\n"
+            '{"files":[{"path":"src/new.py","content":"..."},{"path":"tests/test_new.py","content":"..."}]}\\n'
+            "Existing files MUST use exact find/replace (find non-empty, matches once):\\n"
             '{"files":[{"path":"relative/path.py","find":"exact existing text","replace":"replacement text"}]}\\n'
-            "The find string must match exactly once. Never return full contents for an existing file. "
-            "Use content only when creating a new file. Every path must be inside allow_paths."
+            "Never overwrite an existing file with content. Do not find/replace a path that does not exist yet. "
+            "Every path must be inside allow_paths."
         )
     else:
         user_parts.append("Respond with a single JSON object only.")

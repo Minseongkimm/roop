@@ -61,6 +61,18 @@ pytest
 | 4 | Agent Executor (Ollama/dry-run + tools) |
 | 5 | Verifier + `.agent/memory/lessons.md` |
 | 6 | `night` report + launchd plist template |
+| 7 | Round JSONL + hard-stop `wip/` + eval suite/scorecard |
+
+## Eval (Stage 2)
+
+```bash
+roop eval list
+roop eval enqueue --project /path/to/app --task clamp-util
+roop night --project /path/to/app --db .agent/roop-eval.sqlite3
+roop eval scorecard --project /path/to/app --db .agent/roop-eval.sqlite3
+```
+
+Suite: `evals/v1/manifest.json` (10 easy + 10 medium).
 
 ## Safety
 

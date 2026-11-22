@@ -27,9 +27,12 @@ app: typer.Typer = typer.Typer(
     no_args_is_help=True,
 )
 tasks_app: typer.Typer = typer.Typer(help="Inspect and manage the SQLite task queue")
+eval_app: typer.Typer = typer.Typer(help="Evaluation suite enqueue / run")
 app.add_typer(tasks_app, name="tasks")
+app.add_typer(eval_app, name="eval")
 
 DEFAULT_DB: Path = Path(".agent/roop-tasks.sqlite3")
+DEFAULT_EVAL_DB: Path = Path(".agent/roop-eval.sqlite3")
 
 
 @app.callback()
@@ -148,7 +151,12 @@ def night_command(
         "--dry-run",
         help="Drain queue with synthetic model output",
     ),
-    max_ticks: int = typer.Option(50, "--max-ticks", help="Safety cap"),
+    max_ticks: int = typer.Option(50, "--max-ticks", help="Safety cap on ticks"),
+    max_seconds: Optional[float] = typer.Option(
+        None,
+        "--max-seconds",
+        help="Optional wall-clock hard stop; commits wip/ branch when hit",
+    ),
 ) -> None:
     """Drain the queue and write a morning report under ``.agent/reports/``."""
     from roop.scheduler.night import NightRunResult, NightScheduler
@@ -161,12 +169,17 @@ def night_command(
         role=agent_role,
         dry_run=dry_run,
         max_ticks=max_ticks,
+        max_seconds=max_seconds,
     )
     result: NightRunResult = scheduler.run()
     typer.echo(
         f"night done ticks={result.ticks} green={result.green} "
-        f"red={result.red} blocked={result.blocked}"
+        f"red={result.red} blocked={result.blocked} stop={result.stop_reason}"
     )
+    if result.wip_branch:
+        typer.echo(f"wip: {result.wip_branch}")
+    if result.rounds_path:
+        typer.echo(f"rounds: {result.rounds_path}")
     typer.echo(f"report: {result.report_path}")
 
 
@@ -352,6 +365,146 @@ def unblock_command(
         typer.echo(str(err), err=True)
         raise typer.Exit(code=1) from err
     typer.echo(f"unblocked #{updated.id}: {updated.title}")
+
+
+@eval_app.command("list")
+def eval_list_command(
+    suite: Optional[Path] = typer.Option(
+        None,
+        "--suite",
+        help="Eval manifest path (default: evals/v1/manifest.json)",
+    ),
+) -> None:
+    """List tasks in an eval suite."""
+    from roop.eval.suite import default_suite_path, load_suite
+
+    manifest: Path = suite or default_suite_path()
+    loaded = load_suite(manifest)
+    typer.echo(f"suite: {loaded.name} ({len(loaded.tasks)} tasks)")
+    for item in loaded.tasks:
+        typer.echo(f"- {item.id}\t{item.difficulty}\t{item.title}")
+
+
+@eval_app.command("enqueue")
+def eval_enqueue_command(
+    project: Path = typer.Option(
+        ...,
+        "--project",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        help="Target project root",
+    ),
+    suite: Optional[Path] = typer.Option(
+        None,
+        "--suite",
+        help="Eval manifest path",
+    ),
+    db: Path = typer.Option(DEFAULT_EVAL_DB, "--db", help="Eval SQLite path"),
+    task: Optional[list[str]] = typer.Option(
+        None,
+        "--task",
+        help="Optional task id filter (repeatable)",
+    ),
+) -> None:
+    """Enqueue eval suite tasks into a dedicated database."""
+    from roop.eval.runner import enqueue_suite
+    from roop.eval.suite import default_suite_path, load_suite
+
+    manifest: Path = suite or default_suite_path()
+    database: Path = db if db.is_absolute() else project / db
+    loaded = load_suite(manifest)
+    result = enqueue_suite(
+        project_root=project,
+        suite=loaded,
+        database_path=database,
+        task_ids=list(task) if task else None,
+    )
+    typer.echo(
+        f"enqueued suite={result.suite_name} tasks={len(result.task_ids)} "
+        f"db={result.database_path}"
+    )
+    for task_id in result.task_ids:
+        typer.echo(f"  #{task_id}")
+
+
+@eval_app.command("scorecard")
+def eval_scorecard_command(
+    db: Path = typer.Option(DEFAULT_EVAL_DB, "--db", help="Eval SQLite path"),
+    project: Optional[Path] = typer.Option(
+        None,
+        "--project",
+        help="Optional project root for rounds.jsonl summary",
+    ),
+) -> None:
+    """Print done/blocked success rates for an eval database."""
+    from roop.eval.scorecard import build_scorecard, render_scorecard, summarize_rounds
+
+    database: Path = db
+    if project is not None and not db.is_absolute():
+        database = project / db
+    rows = build_scorecard(database)
+    typer.echo(render_scorecard(rows))
+    if project is not None:
+        rounds = project / ".agent" / "runs" / "rounds.jsonl"
+        typer.echo(summarize_rounds(rounds))
+
+
+@eval_app.command("run")
+def eval_run_command(
+    project: Path = typer.Option(
+        ...,
+        "--project",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        help="Target project root",
+    ),
+    suite: Optional[Path] = typer.Option(
+        None,
+        "--suite",
+        help="Eval manifest path",
+    ),
+    db: Path = typer.Option(DEFAULT_EVAL_DB, "--db", help="Eval SQLite path"),
+    task: Optional[list[str]] = typer.Option(
+        None,
+        "--task",
+        help="Optional task id filter (repeatable)",
+    ),
+    execute: bool = typer.Option(
+        False,
+        "--execute",
+        help="Run executor ticks after enqueue",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Use synthetic model output",
+    ),
+    max_ticks: int = typer.Option(100, "--max-ticks", help="Tick safety cap"),
+) -> None:
+    """Enqueue an eval suite and optionally execute ticks."""
+    from roop.eval.runner import run_suite
+    from roop.eval.suite import default_suite_path
+
+    manifest: Path = suite or default_suite_path()
+    database: Path = db if db.is_absolute() else project / db
+    result = run_suite(
+        project_root=project,
+        suite_path=manifest,
+        database_path=database,
+        task_ids=list(task) if task else None,
+        execute=execute,
+        dry_run=dry_run,
+        max_ticks=max_ticks,
+    )
+    typer.echo(
+        f"eval suite={result.suite_name} enqueued={len(result.enqueued.task_ids)} "
+        f"ticks={len([item for item in result.tick_results if item.did_work])}"
+    )
+    if result.tamper is not None and not result.tamper.ok:
+        typer.echo(f"TAMPER: {result.tamper.detail}", err=True)
+        raise typer.Exit(code=2)
 
 
 @tasks_app.command("list")

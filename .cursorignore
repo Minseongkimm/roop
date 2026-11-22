@@ -1,0 +1,23 @@
+# Local agent runtime / logs (noisy, huge)
+.agent/
+**/packets/
+**/runs/
+**/reports/
+**/memory/
+**/*.sqlite3
+
+# Python / tooling noise
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Editor / misc
+.aider*
+.DS_Store
+*.log

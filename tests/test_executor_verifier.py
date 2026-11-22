@@ -57,6 +57,17 @@ def test_dry_run_coder_tick_is_green(tmp_path: Path) -> None:
     assert store.get_task(1).status == TaskStatus.DONE
 
 
+def test_verifier_feedback_includes_repair_action() -> None:
+    result = VerifyResult(
+        green=False,
+        expected="exit 0",
+        saw="AssertionError: Lists differ: [('a', 2), ('b', 1)] != [('a', 2)]",
+    )
+    feedback = result.feedback()
+    assert "ACTION:" in feedback
+    assert "acceptance_criteria" in feedback
+
+
 def test_verifier_rejects_failed_patch(tmp_path: Path) -> None:
     # Arrange
     project: Path = tmp_path / "app"
@@ -301,6 +312,117 @@ def test_patch_rejects_ambiguous_match(tmp_path: Path) -> None:
     assert result.applied is False
     assert "ambiguous" in result.detail
     assert target.read_text(encoding="utf-8") == "value = 1\nvalue = 1\n"
+
+
+def test_identical_saw_does_not_block_before_retry_two(tmp_path: Path) -> None:
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            return ModelResponse(
+                content='{"files":[{"path":"src/x.py","content":"x=1\\n"}]}',
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / "src").mkdir(parents=True)
+    (project / ".agent" / "project").mkdir(parents=True)
+    (project / ".agent" / "project" / "overview.md").write_text("x\n", encoding="utf-8")
+    db = project / ".agent" / "tasks.sqlite3"
+    store = TaskStore(db)
+    store.create_task(
+        "fail twice",
+        allow_paths="src/**",
+        verify_command="false",
+        max_retries=3,
+    )
+    loop = OrchestratorLoop.from_database(
+        db,
+        project_root=project,
+        role=AgentRole.CODER,
+        execute=True,
+        model=FakeModel(),
+    )
+    first = loop.tick()
+    second = loop.tick()
+    assert first.green is False
+    assert second.green is False
+    assert "BLOCKED" not in second.message
+    assert store.get_task(1).status == TaskStatus.PENDING
+
+
+def test_executor_creates_missing_path_from_find_replace(tmp_path: Path) -> None:
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            return ModelResponse(
+                content=(
+                    '{"files":[{"path":"tests/test_counter_top.py",'
+                    '"find":"import unittest\\nfrom src.chunk import chunk_list\\n",'
+                    '"replace":"import unittest\\nfrom src.counter_top import top_n\\n"}]}'
+                ),
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / "tests").mkdir(parents=True)
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task(
+        "create missing test via find/replace",
+        allow_paths="tests/**",
+        verify_command="true",
+    )
+    executor = AgentExecutor(project, store, model=FakeModel())
+    result = executor.execute(task, AgentRole.CODER)
+    assert result.ok is True
+    written = project / "tests" / "test_counter_top.py"
+    assert written.is_file()
+    assert "from src.counter_top import top_n" in written.read_text(encoding="utf-8")
+
+
+def test_executor_normalizes_empty_find_to_content_for_new_file(tmp_path: Path) -> None:
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            return ModelResponse(
+                content=(
+                    '{"files":[{"path":"src/math_utils.py","find":"",'
+                    '"replace":"def mean(xs):\\n    return sum(xs) / len(xs)\\n"}]}'
+                ),
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / "src").mkdir(parents=True)
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task(
+        "create math utils",
+        allow_paths="src/**",
+        verify_command="true",
+    )
+    executor = AgentExecutor(project, store, model=FakeModel())
+
+    result = executor.execute(task, AgentRole.CODER)
+
+    assert result.ok is True
+    assert result.patches[0].applied is True
+    written = project / "src" / "math_utils.py"
+    assert written.is_file()
+    assert "def mean" in written.read_text(encoding="utf-8")
 
 
 def test_executor_rejects_full_content_for_existing_file(tmp_path: Path) -> None:

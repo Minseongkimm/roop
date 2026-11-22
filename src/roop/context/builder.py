@@ -376,6 +376,16 @@ def _collect_project_context(project_root: Path) -> str:
             continue
         if not content:
             continue
+        # Keep dependency lists tiny so models do not derail into unrelated stack work.
+        if path.name.lower().startswith("requirements") and path.suffix == ".txt":
+            lines = [line for line in content.splitlines() if line.strip()]
+            preview = "\n".join(lines[:12])
+            content = (
+                f"{len(lines)} packages listed. Ignore unless the task needs deps.\n"
+                f"{preview}"
+            )
+            if len(lines) > 12:
+                content += "\n…"
         content = content[:MAX_PROJECT_FILE_CHARS]
         chunk = f"### {path.name}\n{content}"
         available = MAX_PROJECT_CONTEXT_CHARS - total_chars

@@ -28,6 +28,9 @@ class VerifyResult:
             f"GREEN: {self.green}",
         ]
         lines.extend(self.details)
+        hint: str = _repair_hint(self.saw)
+        if hint:
+            lines.append(f"ACTION: {hint}")
         return "\n".join(lines)
 
 
@@ -123,3 +126,24 @@ def _path_allowed(relative: str, patterns: list[str]) -> bool:
     if normalized.startswith(".agent/") or normalized == ".agent":
         return True
     return any(match_allow_path(normalized, pattern) for pattern in patterns)
+
+
+def _repair_hint(saw: str) -> str:
+    text: str = saw.lower()
+    if "failed to import" in text or "importerror" in text or "modulenotfounderror" in text:
+        return (
+            "Create BOTH implementation and test files with content. "
+            "Every import in the test must resolve."
+        )
+    if "assertionerror" in text or "lists differ" in text or " != " in saw:
+        return (
+            "Fix the failing assertion or implementation to match acceptance_criteria. "
+            "Do not invent unrelated apps or frameworks."
+        )
+    if "find string not present" in text:
+        return "For new files use content, not find/replace against missing text."
+    if "no tests ran" in text or "ran 0 tests" in text:
+        return "Create the test module named by verify_command with content."
+    if "empty find" in text:
+        return "Use content for new files; find must be non-empty for edits."
+    return ""

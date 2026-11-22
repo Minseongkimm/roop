@@ -1,0 +1,247 @@
+{
+  "name": "roop-eval-v1",
+  "description": "Machine-checkable coding tasks for local model success-rate tables",
+  "verify_default": "python3 -m unittest discover -s tests -v",
+  "tasks": [
+    {
+      "id": "math-mean-median",
+      "difficulty": "easy",
+      "title": "Implement mean and median",
+      "description": "Create src/math_utils.py with mean() and median(). Empty list raises ValueError. Do not mutate input. Create tests/test_math_utils.py with unittest covering mean([1,2,3])==2, median([1,2,3])==2, median([1,2,3,4])==2.5, empty list ValueError.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "mean/median behave as described; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_math_utils.py -v",
+      "protected_globs": [
+        "tests/test_math_utils.py"
+      ]
+    },
+    {
+      "id": "clamp-util",
+      "difficulty": "easy",
+      "title": "Implement clamp utility",
+      "description": "Create src/clamp.py with clamp(value, low, high) returning value limited to [low, high]. If low > high raise ValueError. Add tests/test_clamp.py unittest.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "clamp(5,0,10)==5, clamp(-1,0,10)==0, clamp(99,0,10)==10, low>high ValueError",
+      "verify_command": "python3 -m unittest discover -s tests -p test_clamp.py -v",
+      "protected_globs": [
+        "tests/test_clamp.py"
+      ]
+    },
+    {
+      "id": "slugify",
+      "difficulty": "easy",
+      "title": "Implement slugify",
+      "description": "Create src/slugify.py with slugify(text) that lowercases, replaces spaces with '-', strips non-alnum except '-', collapses repeats. Add tests/test_slugify.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "slugify('Hello World')=='hello-world'; empty -> ''; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_slugify.py -v",
+      "protected_globs": [
+        "tests/test_slugify.py"
+      ]
+    },
+    {
+      "id": "stack-class",
+      "difficulty": "easy",
+      "title": "Implement Stack class",
+      "description": "Create src/stack.py with Stack having push, pop, peek, is_empty, size. pop/peek on empty raise IndexError. Add tests/test_stack.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "stack ops work; empty pop/peek IndexError; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_stack.py -v",
+      "protected_globs": [
+        "tests/test_stack.py"
+      ]
+    },
+    {
+      "id": "parse-kv",
+      "difficulty": "easy",
+      "title": "Parse key=value lines",
+      "description": "Create src/kv.py with parse_kv(text) returning dict from lines 'key=value', ignore blank/# comments, last duplicate wins. Add tests/test_kv.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "parse_kv handles comments/blanks/duplicates; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_kv.py -v",
+      "protected_globs": [
+        "tests/test_kv.py"
+      ]
+    },
+    {
+      "id": "is-palindrome",
+      "difficulty": "easy",
+      "title": "Implement is_palindrome",
+      "description": "Create src/palindrome.py with is_palindrome(text) ignoring case and non-alphanumeric chars. Add tests/test_palindrome.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "is_palindrome('A man, a plan, a canal: Panama') is True; empty True; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_palindrome.py -v",
+      "protected_globs": [
+        "tests/test_palindrome.py"
+      ]
+    },
+    {
+      "id": "chunk-list",
+      "difficulty": "easy",
+      "title": "Chunk a list",
+      "description": "Create src/chunk.py with chunk_list(items, size) yielding/returning consecutive chunks. size < 1 raises ValueError. Add tests/test_chunk.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "chunk_list([1,2,3,4,5],2)==[[1,2],[3,4],[5]]; size 0 ValueError",
+      "verify_command": "python3 -m unittest discover -s tests -p test_chunk.py -v",
+      "protected_globs": [
+        "tests/test_chunk.py"
+      ]
+    },
+    {
+      "id": "flatten-once",
+      "difficulty": "easy",
+      "title": "Flatten one level",
+      "description": "Create src/flatten.py with flatten_once(seq) flattening one nesting level only. Add tests/test_flatten.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "flatten_once([1,[2,3],[4]])==[1,2,3,4]; nested deeper stays nested one level",
+      "verify_command": "python3 -m unittest discover -s tests -p test_flatten.py -v",
+      "protected_globs": [
+        "tests/test_flatten.py"
+      ]
+    },
+    {
+      "id": "counter-top",
+      "difficulty": "easy",
+      "title": "Top-N counter",
+      "description": "Create src/counter_top.py with top_n(items, n) returning most common items as list of (item, count) sorted by count desc then item. n<1 raises ValueError. Add tests/test_counter_top.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "top_n(['a','b','a'],2) works; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_counter_top.py -v",
+      "protected_globs": [
+        "tests/test_counter_top.py"
+      ]
+    },
+    {
+      "id": "safe-div",
+      "difficulty": "easy",
+      "title": "Safe division",
+      "description": "Create src/safe_div.py with safe_div(a,b, default=None) returning a/b or default when b==0. Add tests/test_safe_div.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "safe_div(10,2)==5; safe_div(1,0,0)==0; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_safe_div.py -v",
+      "protected_globs": [
+        "tests/test_safe_div.py"
+      ]
+    },
+    {
+      "id": "merge-dicts",
+      "difficulty": "medium",
+      "title": "Deep merge dicts",
+      "description": "Create src/merge.py with deep_merge(a,b) recursively merging dicts; b wins on conflicts; do not mutate inputs. Add tests/test_merge.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "nested merge works; inputs unchanged; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_merge.py -v",
+      "protected_globs": [
+        "tests/test_merge.py"
+      ]
+    },
+    {
+      "id": "lru-cache-mini",
+      "difficulty": "medium",
+      "title": "Mini LRU cache",
+      "description": "Create src/lru.py with LRUCache(capacity) supporting get/put; capacity < 1 raises ValueError; eviction is least-recently-used. Add tests/test_lru.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "capacity eviction works; get updates recency; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_lru.py -v",
+      "protected_globs": [
+        "tests/test_lru.py"
+      ]
+    },
+    {
+      "id": "path-normalize",
+      "difficulty": "medium",
+      "title": "Normalize posix paths",
+      "description": "Create src/pathnorm.py with normalize_path(path) resolving . and .. for posix-like paths without OS calls. Add tests/test_pathnorm.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "normalize_path('a/./b/../c')=='a/c'; absolute and relative cases covered",
+      "verify_command": "python3 -m unittest discover -s tests -p test_pathnorm.py -v",
+      "protected_globs": [
+        "tests/test_pathnorm.py"
+      ]
+    },
+    {
+      "id": "retry-helper",
+      "difficulty": "medium",
+      "title": "Retry helper",
+      "description": "Create src/retry.py with retry(fn, retries, exceptions=(Exception,)) calling fn until success or retries exhausted then re-raise. retries < 0 raises ValueError. Add tests/test_retry.py using a callable that fails then succeeds.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "retries then succeeds; exhausted re-raises; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_retry.py -v",
+      "protected_globs": [
+        "tests/test_retry.py"
+      ]
+    },
+    {
+      "id": "ini-section",
+      "difficulty": "medium",
+      "title": "Parse INI-like sections",
+      "description": "Create src/ini_mini.py with parse_sections(text) -> dict[str, dict[str,str]] for [section] and key=value lines. Add tests/test_ini_mini.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "multiple sections parse; comments ignored; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_ini_mini.py -v",
+      "protected_globs": [
+        "tests/test_ini_mini.py"
+      ]
+    },
+    {
+      "id": "bounded-queue",
+      "difficulty": "medium",
+      "title": "Bounded queue",
+      "description": "Create src/bqueue.py with BoundedQueue(maxsize) push/pop/peek/size/is_full. push when full raises OverflowError; pop empty IndexError. Add tests/test_bqueue.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "FIFO + bounds enforced; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_bqueue.py -v",
+      "protected_globs": [
+        "tests/test_bqueue.py"
+      ]
+    },
+    {
+      "id": "tokenize-area",
+      "difficulty": "medium",
+      "title": "Shoelace polygon area",
+      "description": "Create src/geometry.py with polygon_area(points) using shoelace formula; need >=3 points else ValueError. Add tests/test_geometry.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "unit square area 1; <3 points ValueError; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_geometry.py -v",
+      "protected_globs": [
+        "tests/test_geometry.py"
+      ]
+    },
+    {
+      "id": "tokenize-json-roundtrip",
+      "difficulty": "medium",
+      "title": "JSON config roundtrip",
+      "description": "Create src/config_io.py with save_config(path, data) and load_config(path) using json; create parent dirs; invalid json raises ValueError. Add tests/test_config_io.py using tempfile.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "roundtrip dict; bad json ValueError; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_config_io.py -v",
+      "protected_globs": [
+        "tests/test_config_io.py"
+      ]
+    },
+    {
+      "id": "interval-merge",
+      "difficulty": "medium",
+      "title": "Merge intervals",
+      "description": "Create src/intervals.py with merge_intervals(intervals) merging overlapping [start,end] lists. Add tests/test_intervals.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "[[1,3],[2,6],[8,10]] -> [[1,6],[8,10]]; empty ok; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_intervals.py -v",
+      "protected_globs": [
+        "tests/test_intervals.py"
+      ]
+    },
+    {
+      "id": "tokenize-tokenize-wait",
+      "difficulty": "medium",
+      "title": "Topological sort",
+      "description": "Create src/topo.py with topo_sort(nodes, edges) returning a valid topological order; cycle raises ValueError. edges are (u,v) meaning u before v. Add tests/test_topo.py.",
+      "allow_paths": "src/**,tests/**",
+      "acceptance_criteria": "valid order for DAG; cycle ValueError; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_topo.py -v",
+      "protected_globs": [
+        "tests/test_topo.py"
+      ]
+    }
+  ]
+}
