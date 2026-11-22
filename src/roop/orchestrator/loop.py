@@ -105,7 +105,10 @@ class OrchestratorLoop:
         from roop.verifier.engine import Verifier, VerifyResult
 
         assert self._project_root is not None
-        feedback: str = task.last_failure_feedback
+        previous_saw: str = task.last_failure_feedback
+        feedback: str = (
+            f"PREVIOUS_SAW:\n{previous_saw}" if previous_saw else ""
+        )
         executor: AgentExecutor = AgentExecutor(
             self._project_root,
             self._store,
@@ -142,6 +145,21 @@ class OrchestratorLoop:
             )
         saw: str = verify.feedback()
         self._store.set_failure_feedback(task.id, saw)
+
+        if previous_saw and previous_saw == saw:
+            self._store.transition(
+                task.id,
+                TaskStatus.BLOCKED,
+                reason="identical SAW twice",
+            )
+            return TickResult(
+                did_work=True,
+                task_id=task.id,
+                message=f"tick BLOCKED task {task.id}: identical SAW twice",
+                packet_path=packet_path,
+                green=False,
+            )
+
         retried: Task = self._store.transition(
             task.id,
             TaskStatus.PENDING,
