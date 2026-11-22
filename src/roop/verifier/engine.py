@@ -132,8 +132,8 @@ def _repair_hint(saw: str) -> str:
     text: str = saw.lower()
     if "failed to import" in text or "importerror" in text or "modulenotfounderror" in text:
         return (
-            "Create BOTH implementation and test files with content. "
-            "Every import in the test must resolve. "
+            "Fix the implementation under src/ so imports resolve. "
+            "Do not create or edit tests. "
             "Use real newlines in file bodies; keep Python string literals valid "
             "(no raw line breaks inside quotes)."
         )
@@ -150,7 +150,7 @@ def _repair_hint(saw: str) -> str:
     if "find string not present" in text:
         return "For new files use content, not find/replace against missing text."
     if "no tests ran" in text or "ran 0 tests" in text:
-        return "Create the test module named by verify_command with content."
+        return "Tests are fixed. Fix src/ so the existing tests run. Do not create or edit tests."
     if "empty find" in text:
         return "Use content for new files; find must be non-empty for edits."
     return ""
