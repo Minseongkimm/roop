@@ -9,6 +9,7 @@ from roop.executor.agent import ExecutionResult
 from roop.harness.fs_guard import WriteGuard, match_allow_path, split_allow_paths
 from roop.harness.tools import CommandResult, ToolHarness
 from roop.orchestrator.tasks import Task
+from roop.verifier.report import compile_sources, summarize_test_failure
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +68,15 @@ class Verifier:
                     saw=patch.path,
                     details=details,
                 )
+        syntax_error: str = compile_sources(self._project_root)
+        if syntax_error:
+            details.append("py_compile failed; tests were not run")
+            return VerifyResult(
+                green=False,
+                expected="py_compile passes for src/**/*.py",
+                saw=syntax_error,
+                details=details,
+            )
         command_result: CommandResult | None = execution.command
         verify_command: str = task.verify_command.strip()
         if run_command and verify_command and command_result is None:
@@ -84,16 +94,15 @@ class Verifier:
                     details=details,
                 )
             if not command_result.ok:
-                saw: str = (
-                    command_result.stderr.strip()
-                    or command_result.stdout.strip()
-                    or f"exit {command_result.exit_code}"
+                saw: str = summarize_test_failure(
+                    command_result.stdout,
+                    command_result.stderr,
                 )
                 details.append(f"command: {command_result.command}")
                 return VerifyResult(
                     green=False,
                     expected=f"exit 0 from `{verify_command}`",
-                    saw=saw[:500],
+                    saw=saw,
                     exit_code=command_result.exit_code,
                     details=details,
                 )

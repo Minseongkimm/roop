@@ -22,10 +22,22 @@ from roop.orchestrator.loop import OrchestratorLoop
 from roop.orchestrator.tasks import TaskStatus, TaskStore
 
 
-def test_handoff_uses_verification_failures_not_difficulty() -> None:
-    assert should_hand_off_to_api(local_verify_failures=1, dry_run=False) is False
-    assert should_hand_off_to_api(local_verify_failures=2, dry_run=False) is True
-    assert should_hand_off_to_api(local_verify_failures=5, dry_run=True) is False
+def test_handoff_is_only_for_hard_after_two_local_failures() -> None:
+    assert should_hand_off_to_api(
+        local_verify_failures=1, dry_run=False, difficulty="hard"
+    ) is False
+    assert should_hand_off_to_api(
+        local_verify_failures=2, dry_run=False, difficulty="hard"
+    ) is True
+    assert should_hand_off_to_api(
+        local_verify_failures=5, dry_run=True, difficulty="hard"
+    ) is False
+    assert should_hand_off_to_api(
+        local_verify_failures=5, dry_run=False, difficulty="easy"
+    ) is False
+    assert should_hand_off_to_api(
+        local_verify_failures=5, dry_run=False, difficulty="medium"
+    ) is False
 
 
 def test_default_model_is_cheap() -> None:
@@ -78,7 +90,11 @@ def test_two_local_failures_then_api_pass(tmp_path: Path) -> None:
         def chat(self, messages, *, model=None):
             local_calls["n"] += 1
             return ModelResponse(
-                content='{"files":[{"path":"src/x.py","content":"bad\\n"}]}',
+                content=(
+                    '{"files":[{"path":"src/x.py","content":"bad-'
+                    + str(local_calls["n"])
+                    + '\\n"}]}'
+                ),
                 model="qwen2.5-coder:7b",
                 provider="local",
             )
@@ -118,7 +134,7 @@ def test_two_local_failures_then_api_pass(tmp_path: Path) -> None:
     store = TaskStore(db)
     store.create_task(
         "write x",
-        feature_ids="eval,easy,demo",
+        feature_ids="eval,hard,demo",
         allow_paths="src/**",
         verify_command=(
             "python3 -c \"from pathlib import Path; "
@@ -151,7 +167,7 @@ def test_two_local_failures_then_api_pass(tmp_path: Path) -> None:
     assert task.api_calls == 1
     assert task.estimated_cost_usd == 0.001
     rows = build_scorecard(db)
-    assert rows[0].difficulty == "easy"
+    assert rows[0].difficulty == "hard"
     assert rows[0].api_pass == 1
     assert rows[0].local_pass == 0
     assert rows[0].api_calls == 1
@@ -174,7 +190,11 @@ def test_missing_api_key_records_api_skipped(tmp_path: Path, monkeypatch) -> Non
         def chat(self, messages, *, model=None):
             self.calls += 1
             return ModelResponse(
-                content='{"files":[{"path":"src/x.py","content":"bad\\n"}]}',
+                content=(
+                    '{"files":[{"path":"src/x.py","content":"bad-'
+                    + str(self.calls)
+                    + '\\n"}]}'
+                ),
                 model="qwen2.5-coder:7b",
             )
 
@@ -192,7 +212,7 @@ def test_missing_api_key_records_api_skipped(tmp_path: Path, monkeypatch) -> Non
     store = TaskStore(db)
     store.create_task(
         "write x",
-        feature_ids="eval,medium,demo",
+        feature_ids="eval,hard,demo",
         allow_paths="src/**",
         verify_command="false",
         max_retries=3,

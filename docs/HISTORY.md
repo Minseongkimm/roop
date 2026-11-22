@@ -59,3 +59,33 @@
 | query-url | api_skipped | 2 | 78s | query 파싱 실패 | api_skipped | 2 | 201s | query·split 실패 |
 
 - 결론: 더 큰 모델과 더 긴 컨텍스트로도 통과 태스크가 늘지 않았다. 1/10은 7B 한계가 아니라 동결 엔진 한계다
+
+## 2026-11-23 시험지 + 로컬 루프 (`d03a07a`)
+- 골든테스트 수정 없음. 정답 구현은 easy·medium 각 10/10 GREEN, 빈 모듈은 0/10. `make check`에 포함
+- 엔진: 실패 traceback을 다음 프롬프트에 넣음, 기대 import·시그니처·src 내용, `num_ctx 8192`, py_compile 선행, Ollama 500은 횟수 밖, 로컬 4회, 같은 출력은 중단. easy·medium은 API 없음
+- 측정은 clean scratch, `qwen2.5-coder:7b`, 요청 컨텍스트 8192 확인. 측정 중 수정 없음. API 호출 0
+- easy 8/10(80%), 3분 1초. medium 1/10(10%), 20분 1초. 합 23분 3초. 통과는 이전과 같은 태스크뿐
+- 이전 easy 시간은 라운드에 없다. 이전 medium 시간은 `87e0ead` 7B 표
+
+| 태스크 | 이전 결과 | 이전 시도 | 이전 시간 | 이전 원인 | 새 결과 | 새 시도 | 새 시간 | 새 원인 |
+|--------|-----------|-----------|-----------|-----------|---------|---------|---------|---------|
+| math-mean-median | local_pass | 1 | — | | local_pass | 1 | 19s | |
+| clamp-util | local_pass | 1 | — | | local_pass | 1 | 9s | |
+| slugify | fail | 3 | — | test_collapse, 동일 SAW | fail | 2 | 17s | `h-e-l-l-o-w-o-r-l-d`, 같은 출력 |
+| stack-class | local_pass | 1 | — | | local_pass | 1 | 18s | |
+| parse-kv | local_pass | 1 | — | | local_pass | 1 | 11s | |
+| is-palindrome | local_pass | 1 | — | | local_pass | 1 | 10s | |
+| chunk-list | fail | 3 | — | test_chunks, 동일 SAW | fail | 4 | 58s | size<1에서 ValueError 없음 |
+| flatten-once | local_pass | 1 | — | | local_pass | 1 | 13s | |
+| counter-top | local_pass | 1 | — | | local_pass | 1 | 16s | |
+| safe-div | local_pass | 1 | — | | local_pass | 1 | 12s | |
+| money-ledger | api_skipped | 2 | 93s | ImportError | fail | 4 | 151s | `src.ledger` 없음 |
+| csv-roundtrip | api_skipped | 2 | 37s | 중복 헤더·따옴표 | fail | 4 | 363s | `src.csv_write` 없음 |
+| template-filters | api_skipped | 2 | 45s | render 실패 | fail | 4 | 102s | `return` outside function |
+| retry-backoff | api_skipped | 2 | 40s | retry 동작 실패 | fail | 3 | 78s | `backoff_ms(0)`, 같은 출력 |
+| ini-roundtrip | fail | 3 | 95s | ImportError + Ollama 500 | fail | 2 | 43s | NotImplementedError, 같은 출력 |
+| bounded-batch | api_skipped | 2 | 64s | push_many·drain 실패 | fail | 4 | 99s | `src.bqueue` 없음 |
+| interval-coverage | api_skipped | 2 | 46s | merge·coverage 실패 | fail | 2 | 53s | 입력 리스트를 수정, 같은 출력 |
+| config-defaults | api_skipped | 2 | 65s | nested merge 실패 | fail | 3 | 105s | data가 defaults에 덮임, 같은 출력 |
+| graph-topo | local_pass | 2 | 82s | 1회 실패 후 통과 | local_pass | 1 | 45s | 1회에 통과 |
+| query-url | api_skipped | 2 | 78s | query 파싱 실패 | fail | 4 | 163s | `%20`을 공백으로 안 풂 |

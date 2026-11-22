@@ -172,7 +172,7 @@ class ToolHarness:
             command=command,
             exit_code=int(completed.returncode),
             stdout=completed.stdout[-8000:],
-            stderr=completed.stderr[-4000:],
+            stderr=completed.stderr[-8000:],
         )
 
     def git_diff(self, *, max_chars: int = 8000) -> str:

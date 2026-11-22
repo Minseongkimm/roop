@@ -40,9 +40,14 @@ def read_api_key() -> str:
     return os.environ.get(API_KEY_FALLBACK_ENV, "").strip()
 
 
-def should_hand_off_to_api(*, local_verify_failures: int, dry_run: bool) -> bool:
-    """Hand off after repeated local verification failures, never by difficulty."""
-    if dry_run:
+def should_hand_off_to_api(
+    *,
+    local_verify_failures: int,
+    dry_run: bool,
+    difficulty: str = "",
+) -> bool:
+    """Hand off only hard tasks, after repeated local verification failures."""
+    if dry_run or difficulty != "hard":
         return False
     return local_verify_failures >= LOCAL_VERIFY_FAILURES_BEFORE_API
 

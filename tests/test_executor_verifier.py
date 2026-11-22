@@ -356,7 +356,7 @@ def test_patch_rejects_ambiguous_match(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "value = 1\nvalue = 1\n"
 
 
-def test_identical_saw_does_not_block_before_retry_two(tmp_path: Path) -> None:
+def test_identical_output_stops_on_the_repeat(tmp_path: Path) -> None:
     class FakeModel:
         def chat(self, messages, *, model=None):
             return ModelResponse(
@@ -393,8 +393,9 @@ def test_identical_saw_does_not_block_before_retry_two(tmp_path: Path) -> None:
     second = loop.tick()
     assert first.green is False
     assert second.green is False
-    assert "BLOCKED" not in second.message
-    assert store.get_task(1).status == TaskStatus.PENDING
+    assert "identical output repeated" in second.message
+    assert store.get_task(1).status == TaskStatus.BLOCKED
+    assert store.get_task(1).retry_count == 1
 
 
 def test_normalize_model_text_unescapes_newlines() -> None:

@@ -407,6 +407,8 @@ def _messages_from_packet(packet: ContextPacket) -> Sequence[ChatMessage]:
         user_parts.append("## Code slices")
         for item in packet.code_slices:
             user_parts.append(f"### {item.path}\n```\n{item.content}\n```")
+    if packet.module_map:
+        user_parts.extend(["## Module map", packet.module_map])
     if packet.verifier_feedback:
         user_parts.extend(["## Verifier feedback", packet.verifier_feedback])
     if packet.fixed_tests:
@@ -427,6 +429,11 @@ def _messages_from_packet(packet: ContextPacket) -> Sequence[ChatMessage]:
             "Never overwrite an existing file with content. Do not find/replace a path that does not exist yet. "
             "Every path must be inside allow_paths."
         )
+        if packet.module_map:
+            coder_format += (
+                " Create exactly the module files listed under Expected import paths."
+                " Do not invent a different import path."
+            )
         if packet.fixed_tests:
             coder_format += " Fixed tests above are read-only. Edit src/ only."
         user_parts.append(coder_format)
