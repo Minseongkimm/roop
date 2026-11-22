@@ -134,6 +134,7 @@ class OrchestratorLoop:
                     evidence=verify.saw[:200],
                 )
             )
+            self._store.set_failure_feedback(task.id, "")
             return TickResult(
                 did_work=True,
                 task_id=task.id,
@@ -151,6 +152,7 @@ class OrchestratorLoop:
                 TaskStatus.BLOCKED,
                 reason="identical SAW twice",
             )
+            self._store.set_failure_feedback(task.id, saw)
             return TickResult(
                 did_work=True,
                 task_id=task.id,
@@ -165,6 +167,7 @@ class OrchestratorLoop:
             reason=saw[:200],
         )
         if retried.status == TaskStatus.BLOCKED:
+            self._store.set_failure_feedback(task.id, saw)
             return TickResult(
                 did_work=True,
                 task_id=task.id,
