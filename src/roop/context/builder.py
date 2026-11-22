@@ -5,6 +5,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import os
+import re
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -57,6 +58,7 @@ class ContextPacket:
     project_context: str
     feature_context: str
     code_slices: list[CodeSlice] = field(default_factory=list)
+    fixed_tests: str = ""
     verifier_feedback: str = ""
     token_budget: int = DEFAULT_TOKEN_BUDGET
     estimated_tokens: int = 0
@@ -90,6 +92,8 @@ class ContextPacket:
                 self.feature_context or "_(none)_",
                 "## Code slices",
                 "\n\n".join(slices_md) if slices_md else "_(none)_",
+                "## Fixed tests (read-only)",
+                self.fixed_tests or "_(none)_",
                 "## Verifier feedback",
                 self.verifier_feedback or "_(none)_",
             ]
@@ -171,6 +175,11 @@ class ContextBuilder:
         else:
             feedback = ""
 
+        fixed_tests: str = ""
+        if role == AgentRole.CODER:
+            fixed_tests = _load_fixed_tests(self._project_root, task.verify_command)
+            remaining -= estimate_tokens(fixed_tests)
+
         slices: list[CodeSlice] = []
         if include_code_slices and role in {AgentRole.CODER, AgentRole.REVIEWER, AgentRole.TESTER}:
             slices, slice_truncated = self._collect_code_slices(
@@ -180,7 +189,9 @@ class ContextBuilder:
             truncated = truncated or slice_truncated
             remaining -= sum(item.tokens for item in slices)
 
-        used: int = self._token_budget - max(0, remaining)
+        if remaining < 0:
+            truncated = True
+        used: int = self._token_budget - remaining
         return ContextPacket(
             role=role,
             task_id=task.id,
@@ -190,6 +201,7 @@ class ContextBuilder:
             project_context=project_context,
             feature_context=feature_context,
             code_slices=slices,
+            fixed_tests=fixed_tests,
             verifier_feedback=feedback,
             token_budget=self._token_budget,
             estimated_tokens=used,
@@ -424,6 +436,28 @@ def _collect_project_context(project_root: Path) -> str:
         chunks.append(tree[:available])
 
     return "\n\n".join(chunks)[:MAX_PROJECT_CONTEXT_CHARS]
+
+
+_VERIFY_TEST_FILE_RE: re.Pattern[str] = re.compile(r"(?:^|\s)-p\s+(\S+)")
+
+
+def _load_fixed_tests(project_root: Path, verify_command: str) -> str:
+    """Return the task's installed golden test verbatim, when it exists."""
+    match: re.Match[str] | None = _VERIFY_TEST_FILE_RE.search(verify_command)
+    if match is None:
+        return ""
+    name: str = match.group(1).strip("'\"")
+    relative: str = name if name.startswith("tests/") else f"tests/{Path(name).name}"
+    path: Path = project_root / relative
+    if not path.is_file():
+        return ""
+    try:
+        content: str = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    if not content:
+        return ""
+    return f"### `{relative}`\n\n```\n{content.rstrip()}\n```"
 
 
 def _task_to_payload(task: Task) -> dict[str, Any]:

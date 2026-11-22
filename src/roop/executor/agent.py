@@ -12,9 +12,11 @@ from roop.adapters.ollama import OllamaClient
 from roop.context.builder import BuildResult, ContextBuilder, ContextPacket
 from roop.context.roles import AgentRole
 from roop.executor.json_util import parse_json_object
-from roop.harness.fs_guard import WriteGuard
+from roop.harness.fs_guard import WriteGuard, match_allow_path, split_allow_paths
 from roop.harness.tools import CommandResult, FileTransaction, PatchResult, ToolHarness
 from roop.orchestrator.tasks import Task, TaskStore
+
+FIXED_TEST_FEEDBACK: str = "테스트는 고정이다. src/ 만 수정하라"
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +124,37 @@ class AgentExecutor:
                     packet_path=packet_path,
                     model=model_name,
                 )
+        if role == AgentRole.CODER and _attempts_locked_test_write(parsed, task.allow_paths):
+            if not self._dry_run:
+                follow: ModelResponse = self._model.chat(
+                    [
+                        *_messages_from_packet(packet),
+                        ChatMessage(role="assistant", content=raw),
+                        ChatMessage(role="user", content=FIXED_TEST_FEEDBACK),
+                    ]
+                )
+                raw = follow.content
+                model_name = follow.model or model_name
+                self._persist_raw(
+                    task_id=task.id,
+                    role=role,
+                    raw=raw,
+                    suffix="raw-fixed-tests",
+                )
+                try:
+                    parsed = parse_json_object(raw)
+                except ValueError as err:
+                    return ExecutionResult(
+                        role=role,
+                        task_id=task.id,
+                        ok=False,
+                        model_raw=raw,
+                        parsed={},
+                        message=f"JSON parse failed after fixed-test feedback: {err}",
+                        packet_path=packet_path,
+                        model=model_name,
+                    )
+            parsed = _drop_locked_test_writes(parsed, task.allow_paths)
         return self._apply_parsed(
             task=task,
             role=role,
@@ -372,16 +405,27 @@ def _messages_from_packet(packet: ContextPacket) -> Sequence[ChatMessage]:
             user_parts.append(f"### {item.path}\n```\n{item.content}\n```")
     if packet.verifier_feedback:
         user_parts.extend(["## Verifier feedback", packet.verifier_feedback])
+    if packet.fixed_tests:
+        user_parts.extend(
+            [
+                "## Fixed tests (read-only)",
+                "Do not create or modify these files. Implement src/ only.",
+                packet.fixed_tests,
+            ]
+        )
     if packet.role == AgentRole.CODER:
-        user_parts.append(
+        coder_format: str = (
             "Respond with a single JSON object only.\\n"
-            "New files MUST use content (include EVERY new path: implementation AND tests):\\n"
-            '{"files":[{"path":"src/new.py","content":"..."},{"path":"tests/test_new.py","content":"..."}]}\\n'
+            "New files MUST use content:\\n"
+            '{"files":[{"path":"src/new.py","content":"..."}]}\\n'
             "Existing files MUST use exact find/replace (find non-empty, matches once):\\n"
             '{"files":[{"path":"relative/path.py","find":"exact existing text","replace":"replacement text"}]}\\n'
             "Never overwrite an existing file with content. Do not find/replace a path that does not exist yet. "
             "Every path must be inside allow_paths."
         )
+        if packet.fixed_tests:
+            coder_format += " Fixed tests above are read-only. Edit src/ only."
+        user_parts.append(coder_format)
     else:
         user_parts.append("Respond with a single JSON object only.")
     return [
@@ -441,6 +485,73 @@ def normalize_model_text(text: str) -> str:
         .replace("\\t", "\t")
         .replace("\\r", "\r")
     )
+
+
+def _is_tests_path(path: str) -> bool:
+    normalized: str = path.replace("\\", "/").strip()
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    normalized = normalized.lstrip("/")
+    return normalized == "tests" or normalized.startswith("tests/")
+
+
+def _tests_allowed(allow_paths: str) -> bool:
+    patterns: list[str] = split_allow_paths(allow_paths)
+    return any(match_allow_path("tests/x.py", pattern) for pattern in patterns)
+
+
+def _file_entries(parsed: dict[str, Any]) -> list[dict[str, Any]]:
+    files: Any = parsed.get("files") or parsed.get("patches") or []
+    if isinstance(files, dict):
+        files = [files]
+    if not isinstance(files, list):
+        files = []
+    if not files and parsed.get("path"):
+        return [parsed]
+    entries: list[dict[str, Any]] = []
+    for item in files:
+        if isinstance(item, dict):
+            entries.append(item)
+    return entries
+
+
+def _entry_path(item: dict[str, Any]) -> str:
+    return str(item.get("path") or item.get("file") or "").strip()
+
+
+def _attempts_locked_test_write(parsed: dict[str, Any], allow_paths: str) -> bool:
+    if _tests_allowed(allow_paths):
+        return False
+    for item in _file_entries(parsed):
+        path: str = _entry_path(item)
+        if path and _is_tests_path(path):
+            return True
+    return False
+
+
+def _drop_locked_test_writes(parsed: dict[str, Any], allow_paths: str) -> dict[str, Any]:
+    if _tests_allowed(allow_paths):
+        return parsed
+    updated: dict[str, Any] = dict(parsed)
+    if _is_tests_path(str(updated.get("path") or updated.get("file") or "")):
+        for key in ("path", "file", "content", "find", "old", "replace", "new", "hunk"):
+            updated.pop(key, None)
+    for key in ("files", "patches"):
+        raw: Any = updated.get(key)
+        items: list[Any]
+        if isinstance(raw, dict):
+            items = [raw]
+        elif isinstance(raw, list):
+            items = list(raw)
+        else:
+            continue
+        kept: list[Any] = []
+        for item in items:
+            if isinstance(item, dict) and _is_tests_path(_entry_path(item)):
+                continue
+            kept.append(item)
+        updated[key] = kept
+    return updated
 
 
 def _as_int_list(value: Any) -> list[int]:

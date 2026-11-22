@@ -520,3 +520,78 @@ def test_executor_rejects_full_content_for_existing_file(tmp_path: Path) -> None
     assert result.patches[0].applied is False
     assert "full-file overwrite" in result.patches[0].detail
     assert target.read_text(encoding="utf-8") == "original\n"
+
+
+def test_locked_tests_write_gets_immediate_src_only_feedback(tmp_path: Path) -> None:
+    calls: list[list[object]] = []
+    golden = (
+        "import unittest\n\n"
+        "class ClampGolden(unittest.TestCase):\n"
+        "    def test_ready(self) -> None:\n"
+        "        self.assertTrue(True)\n"
+    )
+
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            calls.append(list(messages))
+            if len(calls) == 1:
+                return ModelResponse(
+                    content=(
+                        '{"files":[{"path":"tests/test_clamp.py","content":"rewritten"}]}'
+                    ),
+                    model="fake",
+                )
+            return ModelResponse(
+                content=(
+                    '{"files":[{"path":"src/clamp.py","content":"def clamp(value, low, high):\\n'
+                    '    return value\\n"}]}'
+                ),
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / "src").mkdir(parents=True)
+    (project / "tests").mkdir()
+    golden_path = project / "tests" / "test_clamp.py"
+    golden_path.write_text(golden, encoding="utf-8")
+    (project / ".agent" / "project").mkdir(parents=True)
+    (project / ".agent" / "project" / "overview.md").write_text("x\n", encoding="utf-8")
+    db = project / ".agent" / "tasks.sqlite3"
+    store = TaskStore(db)
+    store.create_task(
+        "implement clamp",
+        description="Implement src/clamp.py only.",
+        allow_paths="src/**",
+        verify_command="python3 -m unittest discover -s tests -p test_clamp.py -v",
+        max_retries=3,
+    )
+    loop = OrchestratorLoop.from_database(
+        db,
+        project_root=project,
+        role=AgentRole.CODER,
+        execute=True,
+        model=FakeModel(),
+    )
+
+    result = loop.tick()
+
+    assert result.green is True
+    task = store.get_task(1)
+    assert task.status == TaskStatus.DONE
+    assert task.retry_count == 0
+    assert golden_path.read_text(encoding="utf-8") == golden
+    assert (project / "src" / "clamp.py").is_file()
+    assert len(calls) == 2
+    assert calls[1][-1].content == "테스트는 고정이다. src/ 만 수정하라"
+    prompt = calls[0][-1].content
+    assert golden.strip() in prompt
+    assert "tests/test_new.py" not in prompt
+    assert "implementation AND tests" not in prompt
+    assert "Add tests/" not in prompt
+    assert "Create tests/" not in prompt
