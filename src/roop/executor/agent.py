@@ -13,7 +13,7 @@ from roop.context.builder import BuildResult, ContextBuilder, ContextPacket
 from roop.context.roles import AgentRole
 from roop.executor.json_util import parse_json_object
 from roop.harness.fs_guard import WriteGuard
-from roop.harness.tools import CommandResult, PatchResult, ToolHarness
+from roop.harness.tools import CommandResult, FileTransaction, PatchResult, ToolHarness
 from roop.orchestrator.tasks import Task, TaskStore
 
 
@@ -31,6 +31,7 @@ class ExecutionResult:
     enqueued_task_ids: list[int] = field(default_factory=list)
     message: str = ""
     packet_path: str | None = None
+    transaction: FileTransaction | None = field(default=None, compare=False, repr=False)
 
 
 class AgentExecutor:
@@ -157,13 +158,19 @@ class AgentExecutor:
                 packet_path=packet_path,
             )
         if role == AgentRole.CODER:
-            return self._apply_coder(
-                task=task,
-                tools=tools,
-                raw=raw,
-                parsed=parsed,
-                packet_path=packet_path,
-            )
+            transaction = FileTransaction(self._project_root)
+            try:
+                return self._apply_coder(
+                    task=task,
+                    tools=tools,
+                    raw=raw,
+                    parsed=parsed,
+                    packet_path=packet_path,
+                    transaction=transaction,
+                )
+            except Exception:
+                transaction.rollback()
+                raise
         if role == AgentRole.REVIEWER:
             blocking: Any = parsed.get("blocking_issues", parsed.get("issues", []))
             count: int = len(blocking) if isinstance(blocking, list) else 1
@@ -261,6 +268,7 @@ class AgentExecutor:
         raw: str,
         parsed: dict[str, Any],
         packet_path: str | None,
+        transaction: FileTransaction | None = None,
     ) -> ExecutionResult:
         patches: list[PatchResult] = []
         files: Any = parsed.get("files") or parsed.get("patches") or []
@@ -277,6 +285,8 @@ class AgentExecutor:
             path: str = str(item.get("path") or item.get("file") or "").strip()
             if not path:
                 continue
+            if transaction is not None:
+                transaction.capture(path)
             if "content" in item:
                 patches.append(tools.write_file(path, str(item.get("content") or "")))
                 continue
@@ -298,6 +308,7 @@ class AgentExecutor:
             patches=patches,
             message=f"coder applied {applied}/{len(patches)} patch(es)",
             packet_path=packet_path,
+            transaction=transaction,
         )
 
 

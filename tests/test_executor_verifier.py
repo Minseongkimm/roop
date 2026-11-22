@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from roop.adapters.model import ModelResponse
+
 from roop.context.roles import AgentRole
 from roop.executor.agent import AgentExecutor, ExecutionResult
 from roop.executor.json_util import parse_json_object
 from roop.harness.fs_guard import WriteGuard
+from roop.harness.tools import FileTransaction
 from roop.memory.lessons import Lesson, LessonStore
 from roop.orchestrator.loop import OrchestratorLoop, TickResult
 from roop.orchestrator.tasks import Task, TaskStatus, TaskStore
@@ -153,3 +156,87 @@ def test_executor_dry_run_planner_enqueues(tmp_path: Path) -> None:
     # Assert
     assert result.ok is True
     assert len(result.enqueued_task_ids) == 1
+
+def test_file_transaction_rolls_back_existing_file(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    project.mkdir()
+    target = project / "existing.txt"
+    target.write_bytes(b"original\\r\\n")
+
+    transaction = FileTransaction(project)
+    transaction.capture("existing.txt")
+    target.write_text("modified", encoding="utf-8")
+    transaction.rollback()
+
+    assert target.read_bytes() == b"original\\r\\n"
+
+
+def test_file_transaction_removes_new_file_on_rollback(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    project.mkdir()
+    transaction = FileTransaction(project)
+    transaction.capture("new/file.txt")
+
+    target = project / "new" / "file.txt"
+    target.parent.mkdir()
+    target.write_text("new content", encoding="utf-8")
+    transaction.rollback()
+
+    assert not target.exists()
+
+
+def test_file_transaction_commit_keeps_changes(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    project.mkdir()
+    target = project / "existing.txt"
+    target.write_text("original", encoding="utf-8")
+
+    transaction = FileTransaction(project)
+    transaction.capture("existing.txt")
+    target.write_text("committed", encoding="utf-8")
+    transaction.commit()
+    transaction.rollback()
+
+    assert target.read_text(encoding="utf-8") == "committed"
+
+def test_orchestrator_rolls_back_file_when_verification_fails(tmp_path: Path) -> None:
+    class FakeModel:
+        def chat(self, messages, *, model=None):
+            return ModelResponse(
+                content='{"files":[{"path":"src/example.py","content":"changed"}]}',
+                model="fake",
+            )
+
+        def is_available(self) -> bool:
+            return True
+
+        def list_models(self) -> list[str]:
+            return ["fake"]
+
+    project = tmp_path / "app"
+    (project / "src").mkdir(parents=True)
+    target = project / "src" / "example.py"
+    target.write_text("original", encoding="utf-8")
+
+    db = project / ".agent" / "tasks.sqlite3"
+    store = TaskStore(db)
+    store.create_task(
+        "change example",
+        allow_paths="src/**",
+        verify_command="false",
+        max_retries=3,
+    )
+
+    loop = OrchestratorLoop.from_database(
+        db,
+        project_root=project,
+        role=AgentRole.CODER,
+        execute=True,
+        model=FakeModel(),
+    )
+
+    result = loop.tick()
+
+    assert result.did_work is True
+    assert result.green is False
+    assert target.read_text(encoding="utf-8") == "original"

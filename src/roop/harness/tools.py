@@ -165,3 +165,46 @@ class ToolHarness:
         if len(text) > max_chars:
             return text[:max_chars].rstrip() + "\n…(truncated)"
         return text
+
+
+
+class FileTransaction:
+    """Keep original file contents and roll back unverified writes."""
+
+    def __init__(self, project_root: Path) -> None:
+        self._root = project_root.resolve()
+        self._originals: dict[Path, bytes | None] = {}
+        self._finished = False
+
+    def capture(self, relative_path: str) -> None:
+        if self._finished:
+            raise RuntimeError("transaction already finished")
+
+        path = (self._root / relative_path).resolve()
+        try:
+            path.relative_to(self._root)
+        except ValueError as err:
+            raise WriteGuardError(f"Path escapes target root: {path}") from err
+
+        if path not in self._originals:
+            self._originals[path] = path.read_bytes() if path.is_file() else None
+
+    def commit(self) -> None:
+        self._finished = True
+        self._originals.clear()
+
+    def rollback(self) -> None:
+        if self._finished:
+            return
+
+        for path, original in reversed(list(self._originals.items())):
+            if original is None:
+                if path.is_file():
+                    path.unlink()
+                continue
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(original)
+
+        self._finished = True
+        self._originals.clear()

@@ -121,9 +121,17 @@ class OrchestratorLoop:
             verifier_feedback=feedback,
         )
         verifier: Verifier = Verifier(self._project_root)
-        verify: VerifyResult = verifier.verify(task, execution)
+        try:
+            verify: VerifyResult = verifier.verify(task, execution)
+        except Exception:
+            if execution.transaction is not None:
+                execution.transaction.rollback()
+            raise
+
         packet_path: str | None = execution.packet_path
         if verify.green:
+            if execution.transaction is not None:
+                execution.transaction.commit()
             self._store.set_failure_feedback(task.id, "")
             self._store.transition(task.id, TaskStatus.DONE)  # 추가된 코드
             LessonStore(self._project_root).append(
@@ -143,6 +151,9 @@ class OrchestratorLoop:
                 packet_path=packet_path,
                 green=True,
             )
+        if execution.transaction is not None:
+            execution.transaction.rollback()
+
         saw: str = verify.feedback()
         self._store.set_failure_feedback(task.id, saw)
 
