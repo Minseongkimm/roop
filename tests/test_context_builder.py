@@ -151,3 +151,68 @@ def test_rg_files_searches_multiple_terms_with_or(tmp_path: Path) -> None:
     result_names = {path.name for path in results}
 
     assert result_names == {"first.py", "second.py"}
+
+def test_code_slices_expand_allow_path_globs(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    for relative in ("src/core.py", "src/utils/helper.py", "tests/test_core.py"):
+        path = project / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"# {relative}\nvalue = 1\n", encoding="utf-8")
+
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task("glob", allow_paths="src/**,tests/**")
+    packet = ContextBuilder(project).build(task, AgentRole.CODER)
+
+    assert {item.path for item in packet.code_slices} == {
+        "src/core.py",
+        "src/utils/helper.py",
+        "tests/test_core.py",
+    }
+
+
+def test_code_slices_glob_excludes_generated_directories(tmp_path: Path) -> None:
+    project = tmp_path / "app"
+    for relative in (
+        "src/real.py",
+        ".venv/lib/secret.py",
+        ".agent/internal.py",
+        "node_modules/pkg/index.py",
+        "src/__pycache__/cached.py",
+        "build/output.py",
+        "coverage/report.py",
+    ):
+        path = project / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("value = 1\n", encoding="utf-8")
+
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task("glob", allow_paths="**/*.py")
+    packet = ContextBuilder(project).build(task, AgentRole.CODER)
+    paths = {item.path for item in packet.code_slices}
+
+    assert "src/real.py" in paths
+    assert not any(
+        part in {".venv", ".agent", "node_modules", "__pycache__", "build", "coverage"}
+        for path in paths
+        for part in Path(path).parts[:-1]
+    )
+
+
+def test_code_slices_glob_respects_max_slices(tmp_path: Path) -> None:
+    from roop.context import builder as builder_module
+
+    project = tmp_path / "app"
+    source = project / "src"
+    source.mkdir(parents=True)
+    for index in range(10):
+        (source / f"module_{index}.py").write_text(
+            f"value_{index} = {index}\n",
+            encoding="utf-8",
+        )
+
+    store = TaskStore(project / ".agent" / "tasks.sqlite3")
+    task = store.create_task("glob", allow_paths="src/**")
+    packet = ContextBuilder(project).build(task, AgentRole.CODER)
+
+    assert builder_module.MAX_SLICES == 8
+    assert len(packet.code_slices) == 8

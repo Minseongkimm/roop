@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import subprocess
@@ -21,11 +22,18 @@ from roop.orchestrator.tasks import Task
 MAX_CONVENTIONS_CHARS: int = 2500
 MAX_FEATURE_CHARS: int = 2000
 MAX_SLICE_CHARS: int = 2400
-MAX_SLICES: int = 3
+MAX_SLICES: int = 8
 MAX_FEEDBACK_CHARS: int = 1200
 MAX_PROJECT_CONTEXT_CHARS: int = 6000
 MAX_PROJECT_FILE_CHARS: int = 2400
 RG_TIMEOUT_SECONDS: float = 5.0
+
+EXCLUDED_DIRS: frozenset[str] = frozenset({
+    ".git", ".venv", "venv", "env", "node_modules",
+    "__pycache__", ".agent", "dist", "build", "coverage",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".next", ".nuxt", "vendor",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,20 +244,25 @@ class ContextBuilder:
             return [], True
 
         hits: list[Path] = []
+        for raw_pattern in task.allow_paths.split(","):
+            pattern = raw_pattern.strip()
+            if not pattern:
+                continue
 
-        for pattern in task.allow_paths.split(","):
-            pattern = pattern.strip()
-            if not pattern or any(char in pattern for char in "*?[]"):
+            if any(char in pattern for char in "*?["):
+                hits.extend(_glob_files(self._project_root, pattern))
                 continue
 
             candidate = (self._project_root / pattern).resolve()
-
             try:
-                candidate.relative_to(self._project_root)
+                relative = candidate.relative_to(self._project_root)
             except ValueError:
                 continue
 
-            if candidate.is_file():
+            if (
+                candidate.is_file()
+                and not any(part in EXCLUDED_DIRS for part in relative.parts[:-1])
+            ):
                 hits.append(candidate)
 
         query: str = _search_query_from_task(task)
@@ -264,20 +277,18 @@ class ContextBuilder:
 
         unique_hits: list[Path] = []
         seen: set[Path] = set()
-
         for path in hits:
             resolved = path.resolve()
             if resolved in seen or not resolved.is_file():
                 continue
-
             try:
-                resolved.relative_to(self._project_root)
+                relative = resolved.relative_to(self._project_root)
             except ValueError:
                 continue
-
+            if any(part in EXCLUDED_DIRS for part in relative.parts[:-1]):
+                continue
             seen.add(resolved)
             unique_hits.append(resolved)
-
             if len(unique_hits) >= MAX_SLICES:
                 break
 
@@ -285,27 +296,38 @@ class ContextBuilder:
         budget_left: int = remaining_tokens
         truncated: bool = False
         per_slice: int = max(200, remaining_tokens // max(1, MAX_SLICES))
-
         for path in unique_hits:
             if budget_left <= 0:
                 truncated = True
                 break
-
             raw: str = _read_file_head(path, max_chars=MAX_SLICE_CHARS)
             if not raw:
                 continue
-
             content: str = truncate_to_tokens(raw, max_tokens=min(per_slice, budget_left))
             tokens: int = estimate_tokens(content)
-
             if tokens <= 0:
                 continue
-
             rel: str = str(path.relative_to(self._project_root))
             slices.append(CodeSlice(path=rel, content=content, tokens=tokens))
             budget_left -= tokens
-
         return slices, truncated
+
+
+def _glob_files(project_root: Path, pattern: str) -> list[Path]:
+    """Expand an allow-path glob while pruning excluded directories."""
+    matches: list[Path] = []
+    for current, dirs, files in os.walk(project_root):
+        dirs[:] = sorted(
+            name for name in dirs
+            if name not in EXCLUDED_DIRS
+        )
+        current_path = Path(current)
+        for name in sorted(files):
+            candidate = current_path / name
+            relative = candidate.relative_to(project_root).as_posix()
+            if fnmatch.fnmatchcase(relative, pattern):
+                matches.append(candidate)
+    return matches
 
 
 def _collect_project_context(project_root: Path) -> str:
@@ -333,11 +355,7 @@ def _collect_project_context(project_root: Path) -> str:
         "compose.yml",
         "makefile",
     }
-    excluded_dirs = {
-        ".git", ".agent", ".venv", "venv", "env", "__pycache__",
-        ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules",
-        "dist", "build", ".next", ".nuxt", "coverage", "vendor",
-    }
+    excluded_dirs = EXCLUDED_DIRS
 
     candidates: list[Path] = []
     for path in project_root.iterdir():
@@ -510,6 +528,14 @@ def _rg_files(*, project_root: Path, query: str, limit: int) -> list[Path]:
         "--glob", "!.agent/**",
         "--glob", "!dist/**",
         "--glob", "!build/**",
+        "--glob", "!vendor/**",
+        "--glob", "!.ruff_cache/**",
+        "--glob", "!.mypy_cache/**",
+        "--glob", "!.pytest_cache/**",
+        "--glob", "!coverage/**",
+        "--glob", "!__pycache__/**",
+        "--glob", "!venv/**",
+        "--glob", "!.venv/**",
     ]
 
     for item in queries:
