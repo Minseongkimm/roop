@@ -1,5 +1,5 @@
-"""Project analyze stubs (Phase 1 logic lives here later)."""
+"""Project analyze packages."""
 
-from roop.analyze.stub import AnalyzeResult, execute_analyze
+from roop.analyze.phase1 import AnalyzeResult, execute_analyze
 
 __all__ = ["AnalyzeResult", "execute_analyze"]

@@ -1,26 +1,9 @@
 # Roop
 
 Local autonomous coding agent engine for MacBook Air M3 (16GB).  
-Phase 0 scaffold: CLI shell, Ollama adapter, SQLite task queue stub, and a write guard that only allows `<target>/.agent/**`.
+**Phase 6 complete (MVP):** Analyzer → Task Manager → Context Builder → Executor → Verifier/Memory → Night Scheduler.
 
 **Stack:** Python 3.11+ · Ollama on `localhost:11434` · 7–8B local model
-
-## Mac M3 setup
-
-```bash
-# tools
-xcode-select --install   # if needed
-brew install git ripgrep jq ollama
-
-# model server (one 7–8B Q4 model — do not load two large models)
-ollama serve
-ollama pull qwen2.5-coder:7b
-# or: ollama pull llama3.1:8b
-curl -s http://127.0.0.1:11434/api/tags | jq .
-
-# optional memory guardrail
-export OLLAMA_CONTEXT_LENGTH=32768
-```
 
 ## Install
 
@@ -30,59 +13,73 @@ cd roop
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+ollama pull qwen2.5-coder:7b
 ```
 
-## Commands that work (Phase 0)
+## Commands
 
 ```bash
-roop doctor
-roop doctor --path /path/to/your-app
-roop analyze /path/to/your-app
-roop enqueue "demo task" --db /path/to/your-app/.agent/roop-tasks.sqlite3
-roop tick --db /path/to/your-app/.agent/roop-tasks.sqlite3
+roop doctor --path /path/to/app
+roop analyze /path/to/app
+
+# Task queue
+roop enqueue "fix free-message gate" \
+  --feature chat --allow-paths ".agent/**" --verify "true" \
+  --db /path/to/app/.agent/roop-tasks.sqlite3
+roop tasks list --db /path/to/app/.agent/roop-tasks.sqlite3
+
+# Context packet only
+roop context 1 --role coder --project /path/to/app \
+  --db /path/to/app/.agent/roop-tasks.sqlite3
+
+# Placeholder tick (packet + mark done, no model)
+roop tick --project /path/to/app --db /path/to/app/.agent/roop-tasks.sqlite3
+
+# Phase 4–5 dry-run (fake model → harness → verifier → lessons)
+roop tick --dry-run --project /path/to/app \
+  --db /path/to/app/.agent/roop-tasks.sqlite3
+
+# Live Ollama execute
+roop tick --execute --project /path/to/app \
+  --db /path/to/app/.agent/roop-tasks.sqlite3
+
+# Phase 6 night drain + report
+roop night --dry-run --project /path/to/app \
+  --db /path/to/app/.agent/roop-tasks.sqlite3
+roop schedule-plist --project /path/to/app --hour 2
+
 pytest
 ```
 
-- `doctor` — checks `git`, `rg`, Ollama `/api/tags`, and optional target git repo
-- `analyze` — stub that detects stack markers and writes a minimal `.agent/` tree (no source edits)
-- `enqueue` / `tick` — SQLite queue helpers for the sequential orchestrator stub
+## Phase map
 
-## Safety defaults
+| Phase | What |
+|------|------|
+| 1 | `analyze` → `.agent/` project map |
+| 2 | SQLite Task Manager (deps, retries, block) |
+| 3 | Context Builder → `.agent/packets/` |
+| 4 | Agent Executor (Ollama/dry-run + tools) |
+| 5 | Verifier + `.agent/memory/lessons.md` |
+| 6 | `night` report + launchd plist template |
 
-- Writes allowed only under `<target>/.agent/**`
-- Source, lockfiles, and configs are read-only in Phase 0
-- No worktree/branch creation yet
-- Cloud API lane is off by default
+## Safety
 
-## Loop visualizer
-
-Interactive walkthrough of one orchestrator tick cycle:
-
-```bash
-cd web && python3 -m http.server 8765 --bind 127.0.0.1
-# open http://127.0.0.1:8765
-```
+- Writes: `.agent/**` plus task `allow_paths`
+- Model claims are not truth — Verifier uses exit codes / patch fences
+- Identical SAW twice or max retries → `blocked`
+- `schedule-plist` writes a template only; does not `launchctl load`
 
 ## Layout
 
 ```text
-web/                     # loop visualizer (static site)
 src/roop/
-  cli.py                 # typer entrypoint
-  doctor.py
-  adapters/
-    model.py             # ModelAdapter protocol
-    ollama.py            # HTTP client → :11434
-  harness/
-    fs_guard.py          # .agent/** write fence
-  orchestrator/
-    tasks.py             # SQLite CRUD
-    loop.py              # single sequential tick stub
-  analyze/
-    stub.py              # Phase 0 analyze scaffold
-tests/
+  analyze/          # Phase 1
+  orchestrator/     # Phase 2 + tick loop
+  context/          # Phase 3
+  executor/         # Phase 4
+  verifier/         # Phase 5
+  memory/           # Phase 5 lessons
+  scheduler/        # Phase 6
+  harness/          # WriteGuard + tools
+  adapters/         # Ollama
 ```
-
-## Design notes
-
-Small local models win through orchestration, not raw IQ: one role per tick, short JSON outputs, narrow tools, and a code Verifier. See Project docs for Phase 1+.

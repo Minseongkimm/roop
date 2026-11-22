@@ -1,5 +1,14 @@
-"""Execution harness: path guards and future tool runners."""
+"""Execution harness: path guards and tool runners."""
 
-from roop.harness.fs_guard import WriteGuard, WriteGuardError
+from roop.harness.fs_guard import WriteGuard, WriteGuardError, match_allow_path, split_allow_paths
+from roop.harness.tools import CommandResult, PatchResult, ToolHarness
 
-__all__ = ["WriteGuard", "WriteGuardError"]
+__all__ = [
+    "CommandResult",
+    "PatchResult",
+    "ToolHarness",
+    "WriteGuard",
+    "WriteGuardError",
+    "match_allow_path",
+    "split_allow_paths",
+]
