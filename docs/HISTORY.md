@@ -137,3 +137,30 @@
 | level-filter | medium | 실패 | 146s | assertion | 실패 | 201s | missing module |
 | prefix-table | medium | 실패 | 131s | syntax | 실패 | 285s | missing module |
 | inventory-sku | medium | 실패 | 215s | assertion | 실패 | 211s | assertion |
+
+## 2026-11-24 Groq Qwen3.8-27B medium 검증 15×3 (`e656e3f`)
+- 엔진: Aider 0.86.2, PR #5와 같은 플래그(`--edit-format whole --no-auto-commits --no-git --no-auto-test --yes-always`). 판정은 하네스. 측정 중 엔진 코드 수정 없음
+- 모델: `groq/qwen/qwen3.8-27b` (무료 한도 30 RPM / 1K RPD / 8K TPM / 1K OTPM / 200K TPD). 목록에 Qwen coder 모델은 없었음
+- 검증 medium 15문제, 문제당 독립 pass@1 3회(온도 0.0). 생성 벽시계 상한 300초. 대기 시간은 재시도로 제외
+- 통과 33/45 (평균 73%), any-of-3 12/15. 7B+Aider 기준선은 pass@1 5/15(33%). 차이 +40%p
+- 인프라 실패 0건. 형식 오류 0. 토큰 50217 sent / 29559 recv (합 79776)
+- 실패 상위: test failed 6, missing module 5, assertion 1. 3회 모두 실패: html-attr, span-contains, level-filter
+- API 서빙 정밀도는 로컬 Q4보다 높을 수 있어, 맥미니 판단 때는 결과를 조금 할인해서 볼 것
+
+| 태스크 | 1회 | 2회 | 3회 | any-of-3 | 시간(평균) | 원인 |
+|--------|----|----|----|----------|------------|------|
+| semver-cmp | 통과 | 통과 | 통과 | 통과 | 3s | - |
+| point-manhattan | 통과 | 통과 | 통과 | 통과 | 4s | - |
+| roman-pair | 실패 | 통과 | 통과 | 통과 | 89s | assertion |
+| matrix-basic | 통과 | 통과 | 통과 | 통과 | 74s | - |
+| html-attr | 실패 | 실패 | 실패 | 실패 | 79s | missing module; missing module; missing module |
+| count-merge | 통과 | 통과 | 통과 | 통과 | 82s | - |
+| email-domain | 통과 | 통과 | 통과 | 통과 | 74s | - |
+| span-contains | 실패 | 실패 | 실패 | 실패 | 151s | test failed; test failed; test failed |
+| line-stats | 통과 | 통과 | 통과 | 통과 | 42s | - |
+| ratio-math | 통과 | 통과 | 통과 | 통과 | 34s | - |
+| temp-convert | 통과 | 통과 | 통과 | 통과 | 66s | - |
+| bbox-area | 실패 | 실패 | 통과 | 통과 | 66s | test failed; test failed |
+| level-filter | 실패 | 실패 | 실패 | 실패 | 141s | missing module; missing module; test failed |
+| prefix-table | 통과 | 통과 | 통과 | 통과 | 132s | - |
+| inventory-sku | 통과 | 통과 | 통과 | 통과 | 52s | - |
