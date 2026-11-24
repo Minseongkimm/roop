@@ -67,7 +67,14 @@ FAILURE_GUIDE: dict[str, tuple[str, str]] = {
     ),
 }
 
+EXCEPTION_CONTRACT: str = (
+    "bool is not an int: bool is a subclass of int, so reject bool when the spec "
+    "requires an int. Raise only the exception types named in the spec."
+)
 _FAILED_TEST_RE: re.Pattern[str] = re.compile(r"^(FAIL|ERROR): (\S+) \(([^)]+)\)", re.MULTILINE)
+_AIDER_BANNER_RE: re.Pattern[str] = re.compile(
+    r"^(?:>\s*)?(Detected dumb terminal\b|Aider v\d|Model:|Git repo:|Repo-map:|Added .+ to the chat\.)"
+)
 _UNEXPECTED_EXC_RE: re.Pattern[str] = re.compile(
     r"^(?!AssertionError)([A-Za-z_][\w.]*(?:Error|Exception)):", re.MULTILINE
 )
@@ -94,6 +101,7 @@ class AttemptRecord:
     locked_reverted: tuple[str, ...]
     fresh_start: bool
     elapsed_seconds: float
+    unchanged_edit: bool = False
 
     def signature(self) -> tuple[str, tuple[str, ...]]:
         return (self.kind, self.failing_tests)
@@ -143,9 +151,19 @@ def failing_tests(output: str) -> tuple[str, ...]:
     return tuple(sorted({match.group(2) for match in _FAILED_TEST_RE.finditer(output or "")}))
 
 
+def strip_aider_banner(text: str) -> str:
+    """Drop Aider's startup banner so feedback is the test failure, not the CLI log."""
+    kept: list[str] = []
+    for line in (text or "").splitlines():
+        if _AIDER_BANNER_RE.match(line.strip()):
+            continue
+        kept.append(line)
+    return "\n".join(kept).strip()
+
+
 def failure_excerpt(output: str, limit: int = _EXCERPT_CHARS) -> str:
     """Keep the unittest failure blocks; drop the passing ``... ok`` lines."""
-    text: str = output or ""
+    text: str = strip_aider_banner(output or "")
     start: int = text.find("=" * 20)
     if start >= 0:
         text = text[start:]
@@ -231,7 +249,16 @@ def build_retry_prompt(
         *log_lines,
         "",
         f"Latest failure kind: {last.kind}. What to do: {instruction}",
+        "",
+        EXCEPTION_CONTRACT,
     ]
+    if last.unchanged_edit:
+        sections += [
+            "",
+            "The last edit left every editable file byte-for-byte unchanged. "
+            "Do not repeat that code. Use a different approach.",
+            "The failure below is the previous real test failure, not an edit-format error.",
+        ]
     if fresh_start:
         sections += [
             "",
@@ -320,12 +347,18 @@ def run_retry_loop(
         if locked:
             _revert_paths(workdir, baseline, locked)
         after: dict[str, bytes] = snapshot_tree(workdir)
-        if not generation.format_ok and not _changed(before, after, editable_files):
-            test: TestRun = TestRun(passed=False, output=f"format: {generation.format_error}"[:600])
+        files_changed: bool = _changed(before, after, editable_files)
+        unchanged_edit: bool = _is_unchanged_edit(generation, files_changed=files_changed)
+        if not generation.format_ok and not files_changed and not unchanged_edit:
+            test: TestRun = TestRun(passed=False, output=_format_feedback(generation.format_error))
             kind: str = "format"
         else:
             test = grade(workdir, test_command)
             kind = "" if test.passed else classify_test_failure(test.output, timed_out=test.timed_out)
+            if unchanged_edit and not test.passed:
+                previous: str = _previous_real_failure(history)
+                if previous:
+                    test = TestRun(passed=False, output=previous, timed_out=test.timed_out)
         record: AttemptRecord = AttemptRecord(
             index=len(history),
             engine=getattr(current, "name", "engine"),
@@ -339,6 +372,7 @@ def run_retry_loop(
             locked_reverted=locked,
             fresh_start=fresh and bool(history),
             elapsed_seconds=round(now() - attempt_started, 3),
+            unchanged_edit=unchanged_edit and not test.passed,
         )
         history.append(record)
         if on_attempt is not None:
@@ -371,6 +405,32 @@ def run_retry_loop(
 
 def _changed(before: dict[str, bytes], after: dict[str, bytes], files: tuple[str, ...]) -> bool:
     return any(before.get(path) != after.get(path) for path in files)
+
+
+def _is_unchanged_edit(generation: EngineGeneration, *, files_changed: bool) -> bool:
+    """An applied edit that left the editable bytes untouched is not a format miss."""
+    if files_changed or generation.format_ok:
+        return False
+    if generation.format_error == "unchanged":
+        return True
+    return "Applied edit to " in (generation.raw_output or "")
+
+
+def _format_feedback(format_error: str) -> str:
+    cleaned: str = strip_aider_banner(format_error)
+    if not cleaned or cleaned == "unchanged":
+        cleaned = "no editable file changed"
+    return f"format: {cleaned}"[:600]
+
+
+def _previous_real_failure(history: list[AttemptRecord]) -> str:
+    """Last test excerpt that is not an edit-format or banner report."""
+    for item in reversed(history):
+        text: str = strip_aider_banner(item.excerpt)
+        if not text or item.kind == "format" or text.startswith("format:"):
+            continue
+        return text
+    return ""
 
 
 def _revert_paths(workdir: Path, baseline: dict[str, bytes], paths: tuple[str, ...]) -> None:

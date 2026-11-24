@@ -11,6 +11,10 @@ from roop.engines.aider_engine import (
     build_aider_command,
     model_settings_text,
 )
+from roop.engines.budget import (
+    MAX_SECONDS_PER_GENERATION,
+    MAX_SECONDS_PER_MULTIFILE_GENERATION,
+)
 from roop.engines.base import EngineRequest
 from roop.eval.compare import run_compare
 from roop.eval.suite import load_suite
@@ -76,6 +80,59 @@ def test_aider_generate_creates_missing_files_and_reports_an_edit(tmp_path: Path
     settings = (tmp_path / ".agent" / "aider-model.yml").read_text(encoding="utf-8")
     assert "use_temperature: 0.2" in settings
     assert "num_ctx: 8192" in settings
+
+
+def test_identical_applied_edit_is_unchanged_not_a_banner(tmp_path: Path) -> None:
+    def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout="Detected dumb terminal, disabling fancy input.\nApplied edit to left.py\n",
+            stderr="",
+        )
+
+    generation = AiderEngine(binary="aider", runner=runner).generate(
+        EngineRequest(
+            prompt="edit",
+            editable_files=("src/left.py",),
+            test_command="python3 -m unittest discover -s tests -v",
+            workdir=tmp_path,
+        )
+    )
+    assert generation.format_ok is False
+    assert generation.format_error == "unchanged"
+
+
+def test_multifile_generation_timeout_is_longer(tmp_path: Path) -> None:
+    seen: dict[str, float] = {}
+
+    def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seen["timeout"] = float(kwargs["timeout"])  # type: ignore[arg-type]
+        workdir: Path = kwargs["cwd"]  # type: ignore[assignment]
+        (workdir / "src" / "right.py").write_text("changed\n", encoding="utf-8")
+        (workdir / "src" / "only.py").write_text("changed\n", encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0, stdout="edited", stderr="")
+
+    engine = AiderEngine(binary="aider", runner=runner)
+    engine.generate(
+        EngineRequest(
+            prompt="edit both",
+            editable_files=("src/left.py", "src/right.py"),
+            test_command="python3 -m unittest discover -s tests -v",
+            workdir=tmp_path,
+        )
+    )
+    assert MAX_SECONDS_PER_MULTIFILE_GENERATION == 600.0
+    assert seen["timeout"] == 600.0
+    engine.generate(
+        EngineRequest(
+            prompt="edit one",
+            editable_files=("src/only.py",),
+            test_command="python3 -m unittest discover -s tests -v",
+            workdir=tmp_path / "one",
+        )
+    )
+    assert seen["timeout"] == MAX_SECONDS_PER_GENERATION
 
 
 def test_compare_keeps_pass_rates_for_a_fake_engine(tmp_path: Path) -> None:

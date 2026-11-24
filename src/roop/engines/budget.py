@@ -12,3 +12,5 @@ BEST_OF_TEMPERATURES: tuple[float, ...] = (0.0, 0.2, 0.4, 0.6, 0.8)
 MAX_GENERATIONS_PER_TASK: int = BEST_OF_N
 MAX_SECONDS_PER_TASK: float = 600.0
 MAX_SECONDS_PER_GENERATION: float = 240.0
+# Whole-file rewrites of several sources do not finish in 240s on a local 7B.
+MAX_SECONDS_PER_MULTIFILE_GENERATION: float = 600.0

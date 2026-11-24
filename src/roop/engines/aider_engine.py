@@ -8,7 +8,10 @@ from pathlib import Path
 
 from roop.adapters.ollama import DEFAULT_MODEL, DEFAULT_NUM_CTX
 from roop.engines.base import EngineGeneration, EngineRequest
-from roop.engines.budget import MAX_SECONDS_PER_GENERATION
+from roop.engines.budget import (
+    MAX_SECONDS_PER_GENERATION,
+    MAX_SECONDS_PER_MULTIFILE_GENERATION,
+)
 
 AIDER_MODEL: str = f"ollama_chat/{DEFAULT_MODEL}"
 _STUB: str = '"""Empty implementation."""\n'
@@ -148,7 +151,7 @@ class AiderEngine:
                 check=False,
                 capture_output=True,
                 text=True,
-                timeout=self._timeout_seconds,
+                timeout=_generation_timeout(request, self._timeout_seconds),
             )
         except subprocess.TimeoutExpired as exc:
             return EngineGeneration(
@@ -158,15 +161,25 @@ class AiderEngine:
             )
         except OSError as exc:
             return EngineGeneration(format_ok=False, format_error=str(exc))
-        raw: str = _output_text(completed.stdout, completed.stderr)
+        raw: str = _output_text(completed.stdout or "", completed.stderr or "")
         if not _editable_files_changed(request, before):
-            detail: str = (completed.stderr or completed.stdout or "no editable file changed").strip()
+            stdout: str = completed.stdout or ""
+            stderr: str = completed.stderr or ""
+            applied: bool = "Applied edit to " in stdout or "Applied edit to " in stderr
+            detail: str = "unchanged" if applied else (stderr or stdout or "no editable file changed").strip()
             return EngineGeneration(
                 format_ok=False,
                 format_error=detail[:300] or "no editable file changed",
                 raw_output=raw,
             )
         return EngineGeneration(format_ok=True, raw_output=raw)
+
+
+def _generation_timeout(request: EngineRequest, single_file_seconds: float) -> float:
+    """Several whole files need longer than one small file. The cap is not a delay."""
+    if len(request.editable_files) > 1:
+        return max(single_file_seconds, MAX_SECONDS_PER_MULTIFILE_GENERATION)
+    return single_file_seconds
 
 
 def _ensure_editable_files(request: EngineRequest) -> dict[str, bytes]:

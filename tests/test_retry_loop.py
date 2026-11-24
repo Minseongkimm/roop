@@ -7,11 +7,13 @@ from pathlib import Path
 from roop.engines.base import EngineGeneration, EngineRequest
 from roop.engines.escalation import build_escalation_engine, escalation_config
 from roop.engines.retry_loop import (
+    EXCEPTION_CONTRACT,
     build_retry_prompt,
     classify_test_failure,
     failing_tests,
     run_retry_loop,
 )
+from roop.engines.roop_engine import task_prompt
 from roop.eval.retry_eval import summarize
 
 TEST_CMD = "python3 -m unittest discover -s tests -p test_add.py -v"
@@ -195,3 +197,66 @@ def test_summary_separates_local_and_api() -> None:
 
 def test_build_retry_prompt_first_attempt_is_plain_spec() -> None:
     assert build_retry_prompt("SPEC", [], fresh_start=False) == "SPEC"
+
+
+def test_task_prompt_and_retry_prompt_state_the_exception_contract(tmp_path: Path) -> None:
+    first = task_prompt("Implement add.", ("src/adder.py",), TEST_CMD)
+    assert "bool is not an int" in first
+    assert "Raise only the exception types named in the spec." in first
+    assert EXCEPTION_CONTRACT in first
+    engine = ScriptedEngine([WRONG, GOOD])
+    _run(tmp_path, engine)
+    assert EXCEPTION_CONTRACT in engine.prompts[1]
+    assert "bool is not an int" in engine.prompts[1]
+
+
+def test_identical_edit_is_not_format_and_replays_the_real_failure(tmp_path: Path) -> None:
+    class Replay(ScriptedEngine):
+        def generate(self, request: EngineRequest) -> EngineGeneration:
+            self.prompts.append(request.prompt)
+            target = request.workdir / "src" / "adder.py"
+            self.seen_files.append(target.read_text() if target.exists() else "")
+            body = self.outputs.pop(0) if self.outputs else WRONG
+            if body == "SAME":
+                return EngineGeneration(
+                    format_ok=False,
+                    format_error="unchanged",
+                    raw_output="Applied edit to adder.py\n",
+                )
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(body)
+            return EngineGeneration(format_ok=True)
+
+    engine = Replay([WRONG, "SAME", GOOD])
+    result = _run(tmp_path, engine)
+    assert result.kinds == ("assertion", "assertion")
+    assert result.attempts[1].unchanged_edit
+    assert "format" not in result.kinds
+    retry = engine.prompts[2]
+    assert "Use a different approach." in retry
+    assert "previous real test failure" in retry
+    assert "5 != -1" in retry or "-1 != 5" in retry
+    assert "Detected dumb terminal" not in retry
+    assert result.local_eventual
+
+
+def test_format_feedback_strips_the_aider_banner(tmp_path: Path) -> None:
+    class Banner(ScriptedEngine):
+        def generate(self, request: EngineRequest) -> EngineGeneration:
+            self.prompts.append(request.prompt)
+            return EngineGeneration(
+                format_ok=False,
+                format_error=(
+                    "Detected dumb terminal, disabling fancy input.\n"
+                    "Aider v0.86.2\n"
+                    "Model: ollama_chat/qwen2.5-coder:7b\n"
+                    "no editable file changed"
+                ),
+            )
+
+    result = _run(tmp_path, Banner([]), max_local_attempts=1)
+    excerpt = result.attempts[0].excerpt
+    assert result.kinds == ("format",)
+    assert "Detected dumb terminal" not in excerpt
+    assert "Aider v0.86.2" not in excerpt
+    assert "no editable file changed" in excerpt
