@@ -33,6 +33,33 @@ class EvalRunResult:
     tamper: TamperResult | None = None
 
 
+
+def install_fixture(*, project_root: Path, suite: EvalSuite) -> list[Path]:
+    """Copy a suite fixture project (usually ``src/``) into ``project_root``.
+
+    Test files in the fixture, if any, are skipped so golden tests stay hidden
+    until ``install_golden_tests`` copies them. Suites without a fixture are
+    left unchanged, so v1 scratch workspaces stay empty except for tests.
+    """
+    if not suite.fixture:
+        return []
+    source: Path = (suite.path.parent / suite.fixture).resolve()
+    if not source.is_dir():
+        raise FileNotFoundError(f"fixture missing: {source}")
+    written: list[Path] = []
+    for path in source.rglob("*"):
+        if not path.is_file():
+            continue
+        relative: Path = path.relative_to(source)
+        if relative.parts and relative.parts[0] == "tests":
+            continue
+        target: Path = project_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
+        written.append(target)
+    return written
+
+
 def install_golden_tests(
     *,
     project_root: Path,
@@ -72,6 +99,7 @@ def enqueue_suite(
         wanted: set[str] = set(task_ids)
         selected = [item for item in selected if item.id in wanted]
     if install_goldens:
+        install_fixture(project_root=project_root, suite=suite)
         install_golden_tests(
             project_root=project_root,
             suite=suite,

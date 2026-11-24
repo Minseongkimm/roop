@@ -29,6 +29,7 @@ class EvalSuite:
     description: str
     path: Path
     tasks: tuple[EvalTask, ...] = field(default_factory=tuple)
+    fixture: str = ""
 
     def by_difficulty(self, difficulty: str) -> list[EvalTask]:
         needle: str = difficulty.lower()
@@ -91,6 +92,7 @@ def load_suite(manifest_path: Path) -> EvalSuite:
         description=str(payload.get("description") or ""),
         path=path,
         tasks=tuple(tasks),
+        fixture=str(payload.get("fixture") or "").strip(),
     )
 
 
