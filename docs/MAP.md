@@ -8,6 +8,7 @@
 - `.agent/` (타깃 프로젝트) — packets, runs JSONL, reports, sqlite
 
 실행: `.venv/bin/python -m roop.cli …`  
+재시도 루프: `eval retry` (Aider+로컬 7B 최대 3회, 실패 유형별 프롬프트, `--escalate-preset groq` 등으로 API 1회). `--suite evals/v2/manifest.json` 이면 v2 fixture를 scratch에 복사한다. 결과 `results.jsonl` + `summary.txt`  
 자주 씀: `analyze`, `enqueue`, `tick --execute`, `night`, `eval enqueue|scorecard`  
 체크: `make check` (= 실패만 요약하는 pytest)  
 실패 모음: `python scripts/collect_failures.py --db PATH --out FAILURES.md`

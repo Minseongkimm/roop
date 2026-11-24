@@ -5,6 +5,7 @@ from __future__ import annotations
 from roop.adapters.model import ModelAdapter
 from roop.adapters.ollama import DEFAULT_MODEL, DEFAULT_NUM_CTX, OllamaClient
 from roop.engines.budget import MAX_SECONDS_PER_GENERATION
+from roop.engines.retry_loop import EXCEPTION_CONTRACT
 from roop.context.roles import AgentRole
 from roop.engines.base import EngineGeneration, EngineRequest
 from roop.executor.agent import AgentExecutor, ExecutionResult
@@ -71,5 +72,6 @@ def task_prompt(description: str, editable_files: tuple[str, ...], test_command:
         "Editable files, create or edit every one of these and no others:\n"
         f"{files}\n\n"
         f"Test command, read-only: {test_command}\n"
-        "Do not create or modify tests."
+        "Do not create or modify tests.\n"
+        f"{EXCEPTION_CONTRACT}"
     )
