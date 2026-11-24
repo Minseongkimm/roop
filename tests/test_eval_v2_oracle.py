@@ -11,6 +11,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from roop.engines.base import EngineGeneration, EngineRequest
+from roop.eval.retry_eval import run_retry_eval
 from roop.eval.runner import install_fixture, install_golden_tests
 from roop.eval.suite import EvalSuite, EvalTask, load_suite
 
@@ -49,6 +51,35 @@ def test_install_fixture_copies_src_but_not_tests(tmp_path: Path) -> None:
     assert not (tmp_path / "tests").exists()
     install_golden_tests(project_root=tmp_path, suite=suite, task_ids=["item-validate"])
     assert (tmp_path / "tests" / "test_item_validate.py").is_file()
+
+
+def test_retry_eval_installs_v2_fixture_before_the_engine(tmp_path: Path) -> None:
+    suite: EvalSuite = load_suite(V2_MANIFEST)
+    seen: list[Path] = []
+
+    class IdleEngine:
+        name: str = "idle"
+
+        def generate(self, request: EngineRequest) -> EngineGeneration:
+            seen.append(request.workdir)
+            return EngineGeneration(format_ok=False, format_error="no edit")
+
+    rows: list[dict[str, object]] = run_retry_eval(
+        engine=IdleEngine(),
+        suite=suite,
+        workspace=tmp_path,
+        split="heldout",
+        task_ids=["item-validate"],
+        max_local_attempts=1,
+    )
+    task_dir: Path = tmp_path / "item-validate"
+    assert rows[0]["task_id"] == "item-validate"
+    assert seen == [task_dir]
+    fixture_service: bytes = (V2_ROOT / "fixture" / "src" / "service.py").read_bytes()
+    assert (task_dir / "src" / "service.py").read_bytes() == fixture_service
+    assert (task_dir / "src" / "models.py").is_file()
+    assert (task_dir / "tests" / "test_item_validate.py").is_file()
+    assert "item-validate" in (tmp_path / "summary.txt").read_text(encoding="utf-8")
 
 
 def test_v1_suite_has_no_fixture() -> None:

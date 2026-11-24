@@ -567,7 +567,11 @@ def eval_retry_command(
         help="Workspace for per-task scratch directories, results.jsonl and summary.txt",
     ),
     split: str = typer.Option("heldout", "--split", help="practice or heldout"),
-    difficulty: Optional[str] = typer.Option(None, "--difficulty", help="easy or medium"),
+    difficulty: Optional[str] = typer.Option(
+        None,
+        "--difficulty",
+        help="Optional filter: v1 easy or medium, v2 single or multi",
+    ),
     task: Optional[list[str]] = typer.Option(None, "--task", help="Only these task ids (repeatable)"),
     max_local: int = typer.Option(3, "--max-local", help="Local attempts per task"),
     escalate: bool = typer.Option(False, "--escalate/--no-escalate", help="Hand failed tasks to an API model"),
@@ -575,7 +579,11 @@ def eval_retry_command(
     escalate_base_url: Optional[str] = typer.Option(None, "--escalate-base-url"),
     escalate_model: Optional[str] = typer.Option(None, "--escalate-model"),
     escalate_key_env: Optional[str] = typer.Option(None, "--escalate-key-env", help="Env var NAME holding the key"),
-    suite: Optional[Path] = typer.Option(None, "--suite", help="Eval manifest path"),
+    suite: Optional[Path] = typer.Option(
+        None,
+        "--suite",
+        help="Eval manifest path (default evals/v1/manifest.json; v2 is evals/v2/manifest.json)",
+    ),
 ) -> None:
     """Failure-aware retry loop (Aider + local model), optional API escalation."""
     from roop.engines.aider_engine import AiderEngine

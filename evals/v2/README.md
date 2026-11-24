@@ -24,9 +24,9 @@ The manifest matches v1 (`id`, `title`, `description`, `allow_paths`,
 `golden_test`, `split`, `src_files`) plus a suite-level `fixture`
 field. `load_suite` reads that field. `install_fixture` copies
 `evals/v2/fixture` (skipping any `tests/`) into the scratch workspace
-before golden tests are installed. `run_compare` and `enqueue_suite`
-do this automatically. v1 suites omit `fixture`, so their scratch
-`src/` stays empty.
+before golden tests are installed. `run_compare`, `enqueue_suite`, and
+`run_retry_eval` (`eval retry --suite`) do this automatically. v1
+suites omit `fixture`, so their scratch `src/` stays empty.
 
 Reference overlays must be applied on top of the fixture when scoring
 a known solution; they are not a complete tree by themselves.

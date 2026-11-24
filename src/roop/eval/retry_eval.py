@@ -16,7 +16,7 @@ from roop.engines.retry_loop import (
     run_retry_loop,
 )
 from roop.engines.roop_engine import task_prompt
-from roop.eval.runner import install_golden_tests
+from roop.eval.runner import install_fixture, install_golden_tests
 from roop.eval.suite import EvalSuite, EvalTask
 
 
@@ -100,6 +100,7 @@ def run_retry_eval(
             continue
         task_dir: Path = workspace / task.id
         task_dir.mkdir(parents=True, exist_ok=True)
+        install_fixture(project_root=task_dir, suite=suite)
         install_golden_tests(project_root=task_dir, suite=suite, task_ids=[task.id])
         outcome: RetryResult = run_retry_loop(
             engine,
