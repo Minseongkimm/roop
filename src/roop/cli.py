@@ -556,6 +556,68 @@ def eval_compare_command(
     typer.echo(f"tasks={len(results)} workspace={project}")
 
 
+@eval_app.command("retry")
+def eval_retry_command(
+    project: Path = typer.Option(
+        ...,
+        "--project",
+        exists=False,
+        file_okay=False,
+        dir_okay=True,
+        help="Workspace for per-task scratch directories, results.jsonl and summary.txt",
+    ),
+    split: str = typer.Option("heldout", "--split", help="practice or heldout"),
+    difficulty: Optional[str] = typer.Option(None, "--difficulty", help="easy or medium"),
+    task: Optional[list[str]] = typer.Option(None, "--task", help="Only these task ids (repeatable)"),
+    max_local: int = typer.Option(3, "--max-local", help="Local attempts per task"),
+    escalate: bool = typer.Option(False, "--escalate/--no-escalate", help="Hand failed tasks to an API model"),
+    escalate_preset: Optional[str] = typer.Option(None, "--escalate-preset", help="e.g. groq"),
+    escalate_base_url: Optional[str] = typer.Option(None, "--escalate-base-url"),
+    escalate_model: Optional[str] = typer.Option(None, "--escalate-model"),
+    escalate_key_env: Optional[str] = typer.Option(None, "--escalate-key-env", help="Env var NAME holding the key"),
+    suite: Optional[Path] = typer.Option(None, "--suite", help="Eval manifest path"),
+) -> None:
+    """Failure-aware retry loop (Aider + local model), optional API escalation."""
+    from roop.engines.aider_engine import AiderEngine
+    from roop.engines.escalation import build_escalation_engine, escalation_config
+    from roop.eval.compare import load_compare_suite
+    from roop.eval.retry_eval import run_retry_eval
+
+    escalation_engine = None
+    if escalate or escalate_preset:
+        config = escalation_config(
+            enabled=True,
+            preset=escalate_preset,
+            base_url=escalate_base_url,
+            model=escalate_model,
+            key_env=escalate_key_env,
+        )
+        problem: str = config.problem()
+        if problem:
+            typer.echo(f"escalation unavailable: {problem}", err=True)
+            raise typer.Exit(code=1)
+        escalation_engine = build_escalation_engine(config)
+        typer.echo(f"escalation: {config.label} via {config.base_url} (key from ${config.key_env})")
+
+    def on_attempt(task_id: str, record) -> None:  # type: ignore[no-untyped-def]
+        state: str = "pass" if record.passed else record.kind
+        typer.echo(f"  {task_id} attempt {record.index + 1} [{record.engine}] {state} ({record.elapsed_seconds:.0f}s)")
+
+    rows = run_retry_eval(
+        engine=AiderEngine(),
+        suite=load_compare_suite(suite),
+        workspace=project,
+        split=split,
+        difficulty=difficulty,
+        task_ids=list(task) if task else None,
+        max_local_attempts=max_local,
+        escalation_engine=escalation_engine,
+        on_attempt=on_attempt,
+    )
+    typer.echo((project / "summary.txt").read_text(encoding="utf-8").rstrip())
+    typer.echo(f"tasks={len(rows)} workspace={project}")
+
+
 @tasks_app.command("list")
 def tasks_list_command(
     db: Path = typer.Option(DEFAULT_DB, "--db", help="SQLite task database path"),

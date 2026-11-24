@@ -25,15 +25,29 @@ def default_aider_binary() -> str:
     return "aider"
 
 
-def model_settings_text(*, model: str, temperature: float, num_ctx: int) -> str:
-    return (
-        f"- name: {model}\n"
-        "  edit_format: whole\n"
-        "  use_repo_map: false\n"
-        f"  use_temperature: {temperature}\n"
-        "  extra_params:\n"
-        f"    num_ctx: {num_ctx}\n"
-    )
+def model_settings_text(
+    *,
+    model: str,
+    temperature: float,
+    num_ctx: int | None,
+    max_tokens: int | None = None,
+) -> str:
+    """Aider model settings. ``num_ctx`` is Ollama-only; API models pass None."""
+    lines: list[str] = [
+        f"- name: {model}",
+        "  edit_format: whole",
+        "  use_repo_map: false",
+        f"  use_temperature: {temperature}",
+    ]
+    params: list[str] = []
+    if num_ctx is not None:
+        params.append(f"    num_ctx: {num_ctx}")
+    if max_tokens is not None:
+        params.append(f"    max_tokens: {max_tokens}")
+    if params:
+        lines.append("  extra_params:")
+        lines.extend(params)
+    return "\n".join(lines) + "\n"
 
 
 def build_aider_command(
@@ -69,7 +83,11 @@ def build_aider_command(
 
 
 class AiderEngine:
-    """Run Aider once per sample against the local Ollama model."""
+    """Run Aider once per sample. Default: the local Ollama model.
+
+    ``extra_env`` and ``extra_args`` let the same adapter drive an
+    OpenAI-compatible API model (escalation) without changing the defaults.
+    """
 
     name: str = "aider"
 
@@ -78,15 +96,24 @@ class AiderEngine:
         *,
         binary: str | None = None,
         model: str = AIDER_MODEL,
-        num_ctx: int = DEFAULT_NUM_CTX,
+        num_ctx: int | None = DEFAULT_NUM_CTX,
+        max_tokens: int | None = None,
         timeout_seconds: float = MAX_SECONDS_PER_GENERATION,
         runner: object | None = None,
+        extra_env: dict[str, str] | None = None,
+        extra_args: tuple[str, ...] = (),
+        name: str | None = None,
     ) -> None:
         self._binary: str = binary or default_aider_binary()
         self._model: str = model
-        self._num_ctx: int = num_ctx
+        self._num_ctx: int | None = num_ctx
+        self._max_tokens: int | None = max_tokens
         self._timeout_seconds: float = timeout_seconds
         self._runner = runner or subprocess.run
+        self._extra_env: dict[str, str] = dict(extra_env or {})
+        self._extra_args: tuple[str, ...] = tuple(extra_args)
+        if name:
+            self.name = name
 
     def generate(self, request: EngineRequest) -> EngineGeneration:
         before: dict[str, bytes] = _ensure_editable_files(request)
@@ -97,6 +124,7 @@ class AiderEngine:
                 model=self._model,
                 temperature=request.temperature,
                 num_ctx=self._num_ctx,
+                max_tokens=self._max_tokens,
             ),
             encoding="utf-8",
         )
@@ -106,8 +134,12 @@ class AiderEngine:
             model=self._model,
             settings_path=settings,
         )
+        if self._extra_args:
+            insert_at: int = command.index("--message")
+            command[insert_at:insert_at] = list(self._extra_args)
         env: dict[str, str] = os.environ.copy()
         env["OLLAMA_API_BASE"] = _OLLAMA_BASE
+        env.update(self._extra_env)
         try:
             completed: subprocess.CompletedProcess[str] = self._runner(
                 command,
