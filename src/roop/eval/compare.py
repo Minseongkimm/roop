@@ -21,7 +21,7 @@ from roop.eval.best_score import (
     render_best_of_scorecard,
     top_failure_reasons,
 )
-from roop.eval.runner import install_golden_tests
+from roop.eval.runner import install_fixture, install_golden_tests
 from roop.eval.suite import EvalSuite, EvalTask, load_suite
 
 
@@ -54,6 +54,7 @@ def run_compare(
             continue
         task_dir: Path = workspace / task.id
         task_dir.mkdir(parents=True, exist_ok=True)
+        install_fixture(project_root=task_dir, suite=suite)
         install_golden_tests(
             project_root=task_dir,
             suite=suite,

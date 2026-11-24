@@ -1,0 +1,190 @@
+{
+  "name": "roop-eval-v2",
+  "description": "Realistic single-file and multi-file feature tasks on a shared inventory-service fixture. Copy evals/v2/fixture into the workspace before running; hidden tests live under golden/.",
+  "verify_default": "python3 -m unittest discover -s tests -v",
+  "fixture": "fixture",
+  "tasks": [
+    {
+      "id": "item-validate",
+      "difficulty": "single",
+      "title": "Add input validation to create and update item",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Edit src/service.py so InventoryService.create_item and update_item validate inputs before saving. Normalize sku by stripping whitespace and uppercasing; it must match ^[A-Z0-9]+(?:-[A-Z0-9]+)*$ or raise ValueError('invalid sku'). A second item (or an update that changes sku) may not reuse another item's sku, case-insensitively after normalization; raise ValueError('duplicate sku'). Updating an item to its own current sku is allowed. Normalize name by stripping whitespace; it must be non-empty and at most 80 characters or raise ValueError('invalid name'). quantity and price_cents must be ints (not bool) and >= 0, otherwise raise ValueError('invalid quantity') or ValueError('invalid price'). Store the normalized sku and name. Leave get_item, list_items, delete_item, and adjust_stock working.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "create/update validate sku, name, quantity, and price as specified; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_item_validate.py -v",
+      "protected_globs": [
+        "tests/test_item_validate.py"
+      ],
+      "golden_test": "golden/tests/test_item_validate.py",
+      "split": "heldout",
+      "src_files": [
+        "src/service.py"
+      ]
+    },
+    {
+      "id": "config-parser",
+      "difficulty": "single",
+      "title": "Implement the config file parser",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Implement src/config.py load_config(path) -> dict. Start from a copy of DEFAULTS ({low_stock_threshold: 5, currency: 'USD', page_size: 20}) and never mutate DEFAULTS. The file is UTF-8. Ignore blank lines and lines whose first non-space character is #. Each remaining line is key = value (spaces around = are optional). Known keys: low_stock_threshold (integer >= 0), currency (non-empty string after strip), page_size (integer >= 1). Integers must be whole decimal numbers, not 1.5. Unknown keys, duplicate keys, lines without '=', or invalid values raise ValueError. A missing file raises FileNotFoundError. A file with only comments or blanks returns the defaults. Return a new dict every call.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "load_config applies defaults, typed overrides, and rejects bad files; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_config_parser.py -v",
+      "protected_globs": [
+        "tests/test_config_parser.py"
+      ],
+      "golden_test": "golden/tests/test_config_parser.py",
+      "split": "heldout",
+      "src_files": [
+        "src/config.py"
+      ]
+    },
+    {
+      "id": "cli-format",
+      "difficulty": "single",
+      "title": "Add a --format option to the list CLI",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Edit src/cli.py so the list subcommand accepts --format {table,json}, default table. Keep the existing table format: a header line ID<TAB>SKU<TAB>NAME<TAB>QTY<TAB>PRICE and one tab-separated row per item (id, sku, name, quantity, price_cents), then a trailing newline. json prints a JSON array of objects with keys id, sku, name, quantity, price_cents in that listing order, then a trailing newline. An empty store prints only the table header (plus newline) or JSON []. Invalid --format values must make main() return 2 (argparse error). Leave add, get, and adjust working. main(argv, service=..., stdout=...) must keep accepting an injected InventoryService and stdout.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "list --format table|json works and invalid format exits 2; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_cli_format.py -v",
+      "protected_globs": [
+        "tests/test_cli_format.py"
+      ],
+      "golden_test": "golden/tests/test_cli_format.py",
+      "split": "heldout",
+      "src_files": [
+        "src/cli.py"
+      ]
+    },
+    {
+      "id": "item-search",
+      "difficulty": "single",
+      "title": "Add item search by name and SKU",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Add Store.search(query: str) -> list[Item] in src/store.py. Treat query as a case-insensitive literal substring of sku or name after stripping surrounding whitespace. An empty or whitespace-only query, or a non-str query, raises ValueError('invalid query'). Return matching items sorted by id. Do not mutate the store.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "Store.search matches sku or name, sorts by id, and rejects empty queries; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_item_search.py -v",
+      "protected_globs": [
+        "tests/test_item_search.py"
+      ],
+      "golden_test": "golden/tests/test_item_search.py",
+      "split": "heldout",
+      "src_files": [
+        "src/store.py"
+      ]
+    },
+    {
+      "id": "csv-export",
+      "difficulty": "single",
+      "title": "Implement CSV export and import for items",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Implement export_csv(items) and import_csv(text) in src/csv_io.py. The CSV header is exactly sku,name,quantity,price_cents. Use comma separators, \\n line endings, and a trailing newline. export_csv writes one data row per item with sku, name, quantity, price_cents. Names that contain commas must be quoted. An empty list exports only the header line. import_csv parses the same format and returns a list of dicts with string sku and name and int quantity and price_cents. Reject a missing or wrong header, a row that is not exactly four fields, an empty sku or name, or a non-integer quantity/price with ValueError. Negative integers are allowed on import.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "CSV export/import round-trips items and rejects malformed input; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_csv_export.py -v",
+      "protected_globs": [
+        "tests/test_csv_export.py"
+      ],
+      "golden_test": "golden/tests/test_csv_export.py",
+      "split": "heldout",
+      "src_files": [
+        "src/csv_io.py"
+      ]
+    },
+    {
+      "id": "category-crud",
+      "difficulty": "multi",
+      "title": "Add category CRUD",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Add a Category record (id, name, slug) and an optional category_id field on Item (default None). Persist categories in the store with create/get/list/save/delete and get_category_by_slug. InventoryService should expose create_category(name, slug=None), get_category, list_categories, update_category, and delete_category. Names are stripped, non-empty, and at most 40 characters, else ValueError('invalid name'). If slug is omitted, build it by lowercasing the name and joining whitespace-separated words with '-'. A slug must match ^[a-z0-9]+(?:-[a-z0-9]+)*$ or raise ValueError('invalid slug'). Slugs must be unique or raise ValueError('duplicate slug'). create_item and update_item accept category_id=None or an existing category id; unknown ids raise KeyError. delete_category raises ValueError('category in use') when any item still references it, and KeyError if the category is missing. Add matching dict-in/dict-out API handlers: create_category, get_category, list_categories, update_category, delete_category. Item and category payloads include category_id or id/name/slug. Failures return {ok: False, error: ...}; missing records use error 'not found'.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "category CRUD, unique slugs, in-use delete, and API handlers match the spec; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_category_crud.py -v",
+      "protected_globs": [
+        "tests/test_category_crud.py"
+      ],
+      "golden_test": "golden/tests/test_category_crud.py",
+      "split": "heldout",
+      "src_files": [
+        "src/models.py",
+        "src/store.py",
+        "src/service.py",
+        "src/api.py"
+      ]
+    },
+    {
+      "id": "list-pagination",
+      "difficulty": "multi",
+      "title": "Add pagination to the list API",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Add InventoryService.paginate_items(page, page_size) -> tuple[list[Item], int] in src/service.py. page must be an int (not bool) >= 1 or raise ValueError('invalid page'). page_size must be an int (not bool) between 1 and 100 inclusive or raise ValueError('invalid page_size'). Items stay sorted by id. The int in the tuple is the total number of items. A page past the end returns an empty list and the true total. Change src/api.py list_items(service, query=None) to read page (default 1) and page_size (default 20) from the query dict. On success return {ok: True, items: [...], page, page_size, total, total_pages}. total_pages is 0 when total is 0, otherwise ceil(total / page_size). Invalid page or page_size (including non-int values such as the string '20') return {ok: False, error: ...}.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "list API pages items and reports total/total_pages; invalid params fail; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_list_pagination.py -v",
+      "protected_globs": [
+        "tests/test_list_pagination.py"
+      ],
+      "golden_test": "golden/tests/test_list_pagination.py",
+      "split": "heldout",
+      "src_files": [
+        "src/service.py",
+        "src/api.py"
+      ]
+    },
+    {
+      "id": "audit-log",
+      "difficulty": "multi",
+      "title": "Add an audit log and wire it into existing actions",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Create src/audit.py with class AuditLog. record(action, **fields) appends an event dict with a 1-based increasing id, the action string, and the given fields, and returns a copy. events() returns a list of copies so callers cannot mutate stored events. InventoryService(store=None, audit=None) must keep an audit attribute, creating an AuditLog if none is passed. Record 'create' after a successful create_item (fields item_id, sku), 'adjust' after a successful adjust_stock (item_id, delta), and 'delete' after a successful delete_item (item_id). Failed operations (insufficient stock, missing item) must not record an event. Add src/api.py list_audit(service) returning {ok: True, events: service.audit.events()}.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "successful create/adjust/delete are audited, failures are not, and list_audit works; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_audit_log.py -v",
+      "protected_globs": [
+        "tests/test_audit_log.py"
+      ],
+      "golden_test": "golden/tests/test_audit_log.py",
+      "split": "heldout",
+      "src_files": [
+        "src/audit.py",
+        "src/service.py",
+        "src/api.py"
+      ]
+    },
+    {
+      "id": "soft-delete",
+      "difficulty": "multi",
+      "title": "Add soft delete and restore for items",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Add a deleted: bool = False field on Item. delete_item must mark the item deleted instead of removing it, and must not reuse that id for later creates. get_item(item_id) and list_items() omit deleted items by default (get_item raises KeyError). Both accept include_deleted=True to include them. Add restore_item(item_id): it undeletes a deleted item and returns it. Restoring a missing item raises KeyError; restoring an item that is not deleted raises ValueError. Deleting a missing or already-deleted item raises KeyError. API: delete_item still returns {ok: True} on success. get_item of a deleted item returns {ok: False, error: 'not found'}. list_items reads include_deleted from the query (true for True, 1, or the strings 'true'/'1'/'yes', case-insensitive) and includes a deleted bool on each item. Add restore_item(service, item_id) returning {ok: True, item: ...} or {ok: False, error: ...}.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "deleted items are hidden unless requested, restore works, and ids are not reused; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_soft_delete.py -v",
+      "protected_globs": [
+        "tests/test_soft_delete.py"
+      ],
+      "golden_test": "golden/tests/test_soft_delete.py",
+      "split": "heldout",
+      "src_files": [
+        "src/models.py",
+        "src/store.py",
+        "src/service.py",
+        "src/api.py"
+      ]
+    },
+    {
+      "id": "place-order",
+      "difficulty": "multi",
+      "title": "Add order placement with stock deduction",
+      "description": "The project already contains a small in-memory inventory service under src/. Implement only the source files under src/. Do NOT create or modify tests; golden tests are already provided. Add OrderLine(item_id, quantity, unit_price_cents) and Order(id, lines, status, total_cents) records, plus store methods to create/get/list/save orders. InventoryService.place_order(lines) takes a non-empty list of {item_id, quantity} dicts. quantity must be an int >= 1. Duplicate item_id values raise ValueError('duplicate item'). Empty or malformed lines raise ValueError('invalid lines'). A missing item raises KeyError. All stock checks happen before any quantity changes; if any line would exceed stock, raise ValueError('insufficient stock') and leave every item unchanged. On success, decrement stock, set unit_price_cents from the item's current price_cents, set total_cents to the sum of unit_price_cents * quantity, status to 'placed', and return the stored order. cancel_order(order_id) restores each line's quantity, sets status to 'cancelled', and returns the order. Cancelling a missing order raises KeyError; cancelling one that is not 'placed' raises ValueError. Also add get_order and list_orders. API handlers place_order(service, body) (reads body['lines']), get_order, list_orders, and cancel_order should return {ok: True, order/orders: ...} or {ok: False, error: ...}, with missing records using 'not found'.",
+      "allow_paths": "src/**",
+      "acceptance_criteria": "orders deduct stock atomically, cancel restores once, and API handlers work; unittest passes",
+      "verify_command": "python3 -m unittest discover -s tests -p test_place_order.py -v",
+      "protected_globs": [
+        "tests/test_place_order.py"
+      ],
+      "golden_test": "golden/tests/test_place_order.py",
+      "split": "heldout",
+      "src_files": [
+        "src/models.py",
+        "src/store.py",
+        "src/service.py",
+        "src/api.py"
+      ]
+    }
+  ]
+}
