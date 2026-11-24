@@ -18,6 +18,7 @@ from roop.engines.retry_loop import (
 from roop.engines.roop_engine import task_prompt
 from roop.eval.runner import install_fixture, install_golden_tests
 from roop.eval.suite import EvalSuite, EvalTask
+from roop.eval.worktree import ensure_task_worktree
 
 
 def result_row(engine_name: str, task: EvalTask, outcome: RetryResult) -> dict[str, object]:
@@ -35,6 +36,7 @@ def result_row(engine_name: str, task: EvalTask, outcome: RetryResult) -> dict[s
         "kinds": list(outcome.kinds),
         "stop_reason": outcome.stop_reason,
         "elapsed_seconds": outcome.elapsed_seconds,
+        "cost_usd": outcome.cost_usd,
         "attempts": [
             {key: value for key, value in asdict(item).items() if key != "excerpt"}
             for item in outcome.attempts
@@ -84,10 +86,16 @@ def run_retry_eval(
     task_ids: list[str] | None = None,
     max_local_attempts: int = MAX_LOCAL_ATTEMPTS,
     escalation_engine: CodingEngine | None = None,
+    escalation_attempts: int = 1,
     max_seconds: float = MAX_SECONDS_PER_RETRY_TASK,
+    max_cost_usd: float | None = None,
     on_attempt: Callable[[str, AttemptRecord], None] | None = None,
 ) -> list[dict[str, object]]:
-    """Resumable: tasks already in results.jsonl are skipped."""
+    """Resumable: tasks already in results.jsonl are skipped.
+
+    ``max_cost_usd`` stops the queue from starting another task. The task that
+    crossed the cap still finishes, and its ``stop_reason`` stays its own.
+    """
     workspace.mkdir(parents=True, exist_ok=True)
     results_path: Path = workspace / "results.jsonl"
     done: dict[str, dict[str, object]] = _load(results_path)
@@ -95,11 +103,17 @@ def run_retry_eval(
     if task_ids:
         wanted: set[str] = set(task_ids)
         selected = [task for task in selected if task.id in wanted]
+    spent: float = sum(float(row.get("cost_usd") or 0) for row in done.values())
+    skipped: list[str] = []
+    run_stop: str = ""
     for task in selected:
         if task.id in done:
             continue
-        task_dir: Path = workspace / task.id
-        task_dir.mkdir(parents=True, exist_ok=True)
+        if max_cost_usd is not None and spent >= max_cost_usd:
+            run_stop = "cost_cap"
+            skipped.append(task.id)
+            continue
+        task_dir: Path = ensure_task_worktree(workspace, task.id)
         install_fixture(project_root=task_dir, suite=suite)
         install_golden_tests(project_root=task_dir, suite=suite, task_ids=[task.id])
         outcome: RetryResult = run_retry_loop(
@@ -110,11 +124,13 @@ def run_retry_eval(
             workdir=task_dir,
             max_local_attempts=max_local_attempts,
             escalation_engine=escalation_engine,
+            escalation_attempts=escalation_attempts,
             max_seconds=max_seconds,
             on_attempt=(lambda record, tid=task.id: on_attempt(tid, record)) if on_attempt else None,
         )
         row: dict[str, object] = result_row(engine.name, task, outcome)
         done[task.id] = row
+        spent += float(outcome.cost_usd)
         with results_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
     ordered: list[dict[str, object]] = [done[task.id] for task in selected if task.id in done]
@@ -122,12 +138,29 @@ def run_retry_eval(
     kinds: list[tuple[str, int]] = failure_kind_counts(ordered)
     if kinds:
         lines.append("failure kinds: " + ", ".join(f"{kind} {count}" for kind, count in kinds))
+    if run_stop:
+        lines.append(
+            f"run_stop: {run_stop} spent_usd={spent:.6f} skipped={','.join(skipped) or '-'}"
+        )
+    (workspace / "run_state.json").write_text(
+        json.dumps(
+            {
+                "stop_reason": run_stop or "completed",
+                "spent_usd": round(spent, 10),
+                "skipped": skipped,
+                "max_cost_usd": max_cost_usd,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     for row in ordered:
         mark: str = "PASS" if row["eventual"] else "FAIL"
         lines.append(
             f"{mark}\t{row['task_id']}\tfirst={int(bool(row['first_pass']))}\t"
             f"local={int(bool(row['local_eventual']))}\tapi={int(bool(row['escalation_solved']))}\t"
-            f"attempts={row['attempts_used']}\tkinds={','.join(row.get('kinds') or []) or '-'}"
+            f"attempts={row['attempts_used']}\tstop={row.get('stop_reason')}\t"
+            f"kinds={','.join(row.get('kinds') or []) or '-'}"
         )
     (workspace / "summary.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return ordered

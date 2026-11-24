@@ -25,6 +25,13 @@ class EngineGeneration:
     format_ok: bool
     format_error: str = ""
     raw_output: str = ""
+    model: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cached_tokens: int = 0
+    provider_cost_usd: float = 0.0
+    cache_cost_usd: float = 0.0
+    cost_usd: float = 0.0
 
 
 class CodingEngine(Protocol):

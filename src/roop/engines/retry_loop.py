@@ -102,6 +102,13 @@ class AttemptRecord:
     fresh_start: bool
     elapsed_seconds: float
     unchanged_edit: bool = False
+    model: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cached_tokens: int = 0
+    provider_cost_usd: float = 0.0
+    cache_cost_usd: float = 0.0
+    cost_usd: float = 0.0
 
     def signature(self) -> tuple[str, tuple[str, ...]]:
         return (self.kind, self.failing_tests)
@@ -119,6 +126,7 @@ class RetryResult:
     attempts: tuple[AttemptRecord, ...]
     elapsed_seconds: float
     stop_reason: str
+    cost_usd: float = 0.0
     kinds: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -373,6 +381,13 @@ def run_retry_loop(
             fresh_start=fresh and bool(history),
             elapsed_seconds=round(now() - attempt_started, 3),
             unchanged_edit=unchanged_edit and not test.passed,
+            model=generation.model,
+            input_tokens=generation.input_tokens,
+            output_tokens=generation.output_tokens,
+            cached_tokens=generation.cached_tokens,
+            provider_cost_usd=generation.provider_cost_usd,
+            cache_cost_usd=generation.cache_cost_usd,
+            cost_usd=generation.cost_usd,
         )
         history.append(record)
         if on_attempt is not None:
@@ -384,6 +399,8 @@ def run_retry_loop(
             local_attempts += 1
         if test.passed:
             stop_reason = "pass"
+    if stop_reason == "exhausted":
+        stop_reason = "attempt_cap"
 
     first_pass: bool = bool(local_attempts >= 1 and history[0].passed)
     local_eventual: bool = any(item.passed for item in history[:local_attempts])
@@ -399,6 +416,7 @@ def run_retry_loop(
         attempts=tuple(history),
         elapsed_seconds=round(now() - started, 3),
         stop_reason=stop_reason,
+        cost_usd=round(sum(item.cost_usd for item in history), 10),
         kinds=tuple(item.kind for item in history if item.kind),
     )
 

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 from roop.adapters.ollama import DEFAULT_MODEL, DEFAULT_NUM_CTX
@@ -12,6 +14,7 @@ from roop.engines.budget import (
     MAX_SECONDS_PER_GENERATION,
     MAX_SECONDS_PER_MULTIFILE_GENERATION,
 )
+from roop.engines.usage import AttemptUsage, usage_from_openrouter, usage_from_text
 
 AIDER_MODEL: str = f"ollama_chat/{DEFAULT_MODEL}"
 _STUB: str = '"""Empty implementation."""\n'
@@ -75,6 +78,7 @@ def build_aider_command(
         "--no-stream",
         "--no-analytics",
         "--no-check-update",
+        "--no-show-model-warnings",
         "--test-cmd",
         request.test_command,
         "--model-settings-file",
@@ -106,15 +110,17 @@ class AiderEngine:
         extra_env: dict[str, str] | None = None,
         extra_args: tuple[str, ...] = (),
         name: str | None = None,
+        usage_lookup: Callable[[str], dict[str, object]] | None = None,
     ) -> None:
         self._binary: str = binary or default_aider_binary()
         self._model: str = model
         self._num_ctx: int | None = num_ctx
         self._max_tokens: int | None = max_tokens
         self._timeout_seconds: float = timeout_seconds
-        self._runner = runner or subprocess.run
+        self._runner = runner or run_process_group
         self._extra_env: dict[str, str] = dict(extra_env or {})
         self._extra_args: tuple[str, ...] = tuple(extra_args)
+        self._usage_lookup: Callable[[str], dict[str, object]] | None = usage_lookup
         if name:
             self.name = name
 
@@ -144,35 +150,102 @@ class AiderEngine:
         env["OLLAMA_API_BASE"] = _OLLAMA_BASE
         env.update(self._extra_env)
         try:
-            completed: subprocess.CompletedProcess[str] = self._runner(
+            completed: subprocess.CompletedProcess[str] = self._runner(  # type: ignore[operator]
                 command,
                 cwd=request.workdir,
                 env=env,
                 check=False,
                 capture_output=True,
                 text=True,
+                stdin=subprocess.DEVNULL,
                 timeout=_generation_timeout(request, self._timeout_seconds),
             )
         except subprocess.TimeoutExpired as exc:
-            return EngineGeneration(
-                format_ok=False,
-                format_error="timeout",
-                raw_output=_output_text(exc.stdout, exc.stderr),
-            )
+            raw_timeout: str = _output_text(exc.stdout, exc.stderr)
+            return _generation(False, "timeout", raw_timeout, self._usage(raw_timeout))
         except OSError as exc:
-            return EngineGeneration(format_ok=False, format_error=str(exc))
+            return _generation(False, str(exc), "", AttemptUsage(model=self._model))
         raw: str = _output_text(completed.stdout or "", completed.stderr or "")
+        usage: AttemptUsage = self._usage(raw)
         if not _editable_files_changed(request, before):
             stdout: str = completed.stdout or ""
             stderr: str = completed.stderr or ""
             applied: bool = "Applied edit to " in stdout or "Applied edit to " in stderr
             detail: str = "unchanged" if applied else (stderr or stdout or "no editable file changed").strip()
-            return EngineGeneration(
-                format_ok=False,
-                format_error=detail[:300] or "no editable file changed",
-                raw_output=raw,
-            )
-        return EngineGeneration(format_ok=True, raw_output=raw)
+            return _generation(False, detail[:300] or "no editable file changed", raw, usage)
+        return _generation(True, "", raw, usage)
+
+    def _usage(self, raw: str) -> AttemptUsage:
+        usage: AttemptUsage = usage_from_text(raw, model=self._model)
+        if self._usage_lookup is None or not usage.generation_id or usage.cost_usd:
+            return usage
+        try:
+            payload: dict[str, object] = self._usage_lookup(usage.generation_id)
+        except Exception:
+            return usage
+        if not payload:
+            return usage
+        return usage_from_openrouter(self._model, payload)
+
+
+def run_process_group(
+    command: list[str],
+    *,
+    cwd: Path | str | None = None,
+    env: dict[str, str] | None = None,
+    timeout: float | None = None,
+    stdin: object = subprocess.DEVNULL,
+    capture_output: bool = True,
+    text: bool = True,
+    check: bool = False,
+    **_ignored: object,
+) -> subprocess.CompletedProcess[str]:
+    """Run a command with stdin closed. On timeout, kill its process group."""
+    del stdin  # always closed; a caller cannot leave Aider waiting on a tty
+    proc: subprocess.Popen[str] = subprocess.Popen(
+        command,
+        cwd=cwd,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE if capture_output else None,
+        stderr=subprocess.PIPE if capture_output else None,
+        text=text,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_process_group(proc.pid)
+        stdout, stderr = proc.communicate()
+        raise subprocess.TimeoutExpired(command, timeout or 0, output=stdout, stderr=stderr)
+    if check and proc.returncode:
+        raise subprocess.CalledProcessError(proc.returncode, command, stdout, stderr)
+    return subprocess.CompletedProcess(command, proc.returncode or 0, stdout or "", stderr or "")
+
+
+def _kill_process_group(pid: int) -> None:
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            return
+
+
+def _generation(format_ok: bool, format_error: str, raw: str, usage: AttemptUsage) -> EngineGeneration:
+    return EngineGeneration(
+        format_ok=format_ok,
+        format_error=format_error,
+        raw_output=raw,
+        model=usage.model,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cached_tokens=usage.cached_tokens,
+        provider_cost_usd=usage.provider_cost_usd,
+        cache_cost_usd=usage.cache_cost_usd,
+        cost_usd=usage.cost_usd,
+    )
 
 
 def _generation_timeout(request: EngineRequest, single_file_seconds: float) -> float:

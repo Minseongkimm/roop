@@ -584,6 +584,11 @@ def eval_retry_command(
         "--suite",
         help="Eval manifest path (default evals/v1/manifest.json; v2 is evals/v2/manifest.json)",
     ),
+    attempt_timeout: Optional[float] = typer.Option(
+        None,
+        "--attempt-timeout",
+        help="Seconds before the Aider process group is killed (default 240, 600 for several files)",
+    ),
 ) -> None:
     """Failure-aware retry loop (Aider + local model), optional API escalation."""
     from roop.engines.aider_engine import AiderEngine
@@ -612,7 +617,7 @@ def eval_retry_command(
         typer.echo(f"  {task_id} attempt {record.index + 1} [{record.engine}] {state} ({record.elapsed_seconds:.0f}s)")
 
     rows = run_retry_eval(
-        engine=AiderEngine(),
+        engine=AiderEngine(timeout_seconds=attempt_timeout) if attempt_timeout else AiderEngine(),
         suite=load_compare_suite(suite),
         workspace=project,
         split=split,
@@ -620,6 +625,89 @@ def eval_retry_command(
         task_ids=list(task) if task else None,
         max_local_attempts=max_local,
         escalation_engine=escalation_engine,
+        on_attempt=on_attempt,
+    )
+    typer.echo((project / "summary.txt").read_text(encoding="utf-8").rstrip())
+    typer.echo(f"tasks={len(rows)} workspace={project}")
+
+
+@eval_app.command("overnight")
+def eval_overnight_command(
+    project: Path = typer.Option(
+        ...,
+        "--project",
+        exists=False,
+        file_okay=False,
+        dir_okay=True,
+        help="Workspace for per-task worktrees, results.jsonl and summary.txt",
+    ),
+    split: str = typer.Option("heldout", "--split", help="practice or heldout"),
+    difficulty: Optional[str] = typer.Option(None, "--difficulty"),
+    task: Optional[list[str]] = typer.Option(None, "--task", help="Only these task ids (repeatable)"),
+    suite: Optional[Path] = typer.Option(None, "--suite"),
+    base_model: str = typer.Option(
+        "ollama_chat/qwen2.5-coder:7b",
+        "--base-model",
+        help="Local Ollama model, or an openai/ model when --base-url is set",
+    ),
+    base_url: Optional[str] = typer.Option(None, "--base-url", help="OpenAI-compatible base URL for the base model"),
+    base_key_env: str = typer.Option("OPENROUTER_API_KEY", "--base-key-env"),
+    fallback_model: str = typer.Option("qwen/qwen3-coder", "--fallback-model"),
+    fallback_base_url: str = typer.Option("https://openrouter.ai/api/v1", "--fallback-base-url"),
+    fallback_key_env: str = typer.Option("OPENROUTER_API_KEY", "--fallback-key-env"),
+    max_attempts: int = typer.Option(3, "--max-attempts"),
+    attempt_timeout: float = typer.Option(600.0, "--attempt-timeout"),
+    max_cost_usd: float = typer.Option(5.0, "--max-cost-usd"),
+) -> None:
+    """Local base model, one OpenRouter fallback, hard attempt and dollar caps."""
+    from roop.engines.routing import ModelSpec, RouteConfig, build_routed_engine, local_attempts
+    from roop.eval.compare import load_compare_suite
+    from roop.eval.retry_eval import run_retry_eval
+
+    config = RouteConfig(
+        base=ModelSpec(name=base_model, base_url=base_url or "", key_env=base_key_env if base_url else ""),
+        fallback=ModelSpec(name=fallback_model, base_url=fallback_base_url, key_env=fallback_key_env),
+        max_attempts=max_attempts,
+        attempt_timeout_seconds=attempt_timeout,
+        max_cost_usd=max_cost_usd,
+    )
+    problem: str = config.problem()
+    if problem:
+        typer.echo(f"overnight unavailable: {problem}", err=True)
+        raise typer.Exit(code=1)
+    base_engine = build_routed_engine(config.base, timeout_seconds=attempt_timeout)
+    fallback = config.fallback
+    assert fallback is not None
+    fallback_engine = build_routed_engine(fallback, timeout_seconds=attempt_timeout)
+    base_n, fallback_n = local_attempts(config)
+    typer.echo(
+        f"route: base {base_engine.name} | fallback {fallback.name} "
+        f"via {fallback.base_url} (key from ${fallback.key_env})"
+    )
+    typer.echo(
+        f"caps: attempts={config.max_attempts} timeout={attempt_timeout:.0f}s max_usd={max_cost_usd}"
+    )
+
+    def on_attempt(task_id: str, record) -> None:  # type: ignore[no-untyped-def]
+        state: str = "pass" if record.passed else record.kind
+        typer.echo(
+            f"  {task_id} attempt {record.index + 1} [{record.model or record.engine}] {state} "
+            f"({record.elapsed_seconds:.0f}s) tokens={record.input_tokens}/{record.output_tokens} "
+            f"cache={record.cached_tokens} usd={record.cost_usd:.6f}"
+        )
+
+    rows = run_retry_eval(
+        engine=base_engine,
+        suite=load_compare_suite(suite),
+        workspace=project,
+        split=split,
+        difficulty=difficulty,
+        task_ids=list(task) if task else None,
+        max_local_attempts=base_n,
+        escalation_engine=fallback_engine if fallback_n else None,
+        escalation_attempts=fallback_n,
+        max_seconds=config.max_attempts * attempt_timeout,
+        max_cost_usd=max_cost_usd,
         on_attempt=on_attempt,
     )
     typer.echo((project / "summary.txt").read_text(encoding="utf-8").rstrip())

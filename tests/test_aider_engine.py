@@ -38,6 +38,11 @@ def test_aider_command_adds_every_src_file_and_disables_commits() -> None:
     assert "--no-auto-commits" in command
     assert "--no-git" in command
     assert "--no-auto-test" in command
+    assert "--yes-always" in command
+    assert "--no-pretty" in command
+    assert "--no-stream" in command
+    assert "--no-check-update" in command
+    assert "--no-show-model-warnings" in command
     assert command[command.index("--model") + 1] == "ollama_chat/qwen2.5-coder:7b"
     assert command[command.index("--test-cmd") + 1] == request.test_command
     assert command[command.index("--message") + 1] == request.prompt

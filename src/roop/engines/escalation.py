@@ -105,5 +105,5 @@ def build_escalation_engine(
             "NUM_RETRIES": "0",
             "LITELLM_NUM_RETRIES": "0",
         },
-        extra_args=("--no-show-model-warnings",),
+        extra_args=(),
     )
